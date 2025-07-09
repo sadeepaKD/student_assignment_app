@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_form_builder/flutter_form_builder.dart';
 import 'package:form_builder_validators/form_builder_validators.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../config/theme.dart';
 import '../../providers/student_provider.dart';
@@ -98,7 +99,7 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                 
                 const SizedBox(height: AppTheme.spacingL),
                 
-                // Stats
+                // Stats (simplified - no active/inactive distinction)
                 _buildStatsCards(studentProvider),
                 
                 const SizedBox(height: AppTheme.spacingXl),
@@ -168,83 +169,10 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
     );
   }
 
+  // SIMPLIFIED: Only show total students count
   Widget _buildStatsCards(StudentProvider provider) {
     final totalStudents = provider.students.length;
-    final activeStudents = provider.students.where((s) => s.isActive).length;
-    final inactiveStudents = totalStudents - activeStudents;
     
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        if (constraints.maxWidth > 600) {
-          return Row(
-            children: [
-              Expanded(
-                child: _buildStatCard(
-                  'Total Students',
-                  totalStudents.toString(),
-                  Icons.people,
-                  AppTheme.primaryColor,
-                ),
-              ),
-              const SizedBox(width: AppTheme.spacingM),
-              Expanded(
-                child: _buildStatCard(
-                  'Active Students',
-                  activeStudents.toString(),
-                  Icons.check_circle,
-                  AppTheme.successColor,
-                ),
-              ),
-              const SizedBox(width: AppTheme.spacingM),
-              Expanded(
-                child: _buildStatCard(
-                  'Inactive Students',
-                  inactiveStudents.toString(),
-                  Icons.cancel,
-                  AppTheme.warningColor,
-                ),
-              ),
-            ],
-          );
-        } else {
-          return Column(
-            children: [
-              _buildStatCard(
-                'Total Students',
-                totalStudents.toString(),
-                Icons.people,
-                AppTheme.primaryColor,
-              ),
-              const SizedBox(height: AppTheme.spacingM),
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildStatCard(
-                      'Active',
-                      activeStudents.toString(),
-                      Icons.check_circle,
-                      AppTheme.successColor,
-                    ),
-                  ),
-                  const SizedBox(width: AppTheme.spacingM),
-                  Expanded(
-                    child: _buildStatCard(
-                      'Inactive',
-                      inactiveStudents.toString(),
-                      Icons.cancel,
-                      AppTheme.warningColor,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          );
-        }
-      },
-    );
-  }
-
-  Widget _buildStatCard(String title, String value, IconData icon, Color color) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(AppTheme.spacingL),
@@ -253,25 +181,22 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
           children: [
             Row(
               children: [
-                Icon(icon, color: color, size: 24),
+                Icon(Icons.people, color: AppTheme.primaryColor, size: 24),
                 const SizedBox(width: AppTheme.spacingS),
-                Flexible(
-                  child: Text(
-                    title,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppTheme.textSecondary,
-                    ),
-                    overflow: TextOverflow.ellipsis,
+                Text(
+                  'Total Students',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: AppTheme.textSecondary,
                   ),
                 ),
               ],
             ),
             const SizedBox(height: AppTheme.spacingS),
             Text(
-              value,
+              totalStudents.toString(),
               style: Theme.of(context).textTheme.headlineLarge?.copyWith(
                 fontWeight: FontWeight.bold,
-                color: color,
+                color: AppTheme.primaryColor,
               ),
             ),
           ],
@@ -349,15 +274,14 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
     }).toList();
   }
 
+  // SIMPLIFIED: Removed isActive status display and toggle option
   Widget _buildStudentCard(Student student) {
     return Card(
       margin: const EdgeInsets.only(bottom: AppTheme.spacingM),
       child: ListTile(
         contentPadding: const EdgeInsets.all(AppTheme.spacingM),
         leading: CircleAvatar(
-          backgroundColor: student.isActive 
-              ? AppTheme.primaryColor 
-              : AppTheme.textTertiary,
+          backgroundColor: AppTheme.primaryColor,
           child: Text(
             student.name.isNotEmpty ? student.name[0].toUpperCase() : 'U',
             style: const TextStyle(
@@ -384,19 +308,15 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
               ],
             ),
             const SizedBox(height: AppTheme.spacingXs),
+            // Show student ID (WhatsApp number)
             Row(
               children: [
-                Icon(
-                  student.isActive ? Icons.check_circle : Icons.cancel,
-                  size: 16,
-                  color: student.isActive ? AppTheme.successColor : AppTheme.warningColor,
-                ),
+                const Icon(Icons.badge, size: 16, color: AppTheme.textSecondary),
                 const SizedBox(width: AppTheme.spacingXs),
                 Text(
-                  student.isActive ? 'Active' : 'Inactive',
-                  style: TextStyle(
-                    color: student.isActive ? AppTheme.successColor : AppTheme.warningColor,
-                    fontWeight: FontWeight.w500,
+                  'ID: ${student.id}',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppTheme.textSecondary,
                   ),
                 ),
               ],
@@ -417,17 +337,14 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                 ],
               ),
             ),
-            PopupMenuItem(
-              value: 'toggle',
+            const PopupMenuItem(
+              value: 'assignments',
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(
-                    student.isActive ? Icons.block : Icons.check_circle,
-                    size: 18,
-                  ),
-                  const SizedBox(width: AppTheme.spacingS),
-                  Text(student.isActive ? 'Deactivate' : 'Activate'),
+                  Icon(Icons.assignment, size: 18),
+                  SizedBox(width: AppTheme.spacingS),
+                  Text('View Assignments'),
                 ],
               ),
             ),
@@ -452,92 +369,35 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
   }
 
   void _showAddStudentDialog() {
-    final formKey = GlobalKey<FormBuilderState>();
-    
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Add New Student'),
-        content: SizedBox(
-          width: 400,
-          child: FormBuilder(
-            key: formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CustomTextField(
-                  name: 'name',
-                  label: 'Full Name',
-                  hintText: 'Enter student\'s full name',
-                  prefixIcon: Icons.person,
-                  validator: FormBuilderValidators.compose([
-                    FormBuilderValidators.required(),
-                    FormBuilderValidators.minLength(2),
-                  ]),
-                ),
-                
-                const SizedBox(height: AppTheme.spacingL),
-                
-                CustomTextField(
-                  name: 'whatsappNumber',
-                  label: 'WhatsApp Number',
-                  hintText: 'Enter WhatsApp number (e.g., 447123456789)',
-                  keyboardType: TextInputType.phone,
-                  prefixIcon: Icons.phone,
-                  validator: FormBuilderValidators.compose([
-                    FormBuilderValidators.required(),
-                    FormBuilderValidators.minLength(10),
-                  ]),
-                ),
-              ],
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          CustomButton(
-            text: 'Add Student',
-            onPressed: () => _handleAddStudent(formKey),
-            fullWidth: false,
-            width: 120,
-          ),
-        ],
+      builder: (dialogContext) => _AddStudentDialog(
+        onSubmit: _handleAddStudent,
       ),
     );
   }
 
-  void _handleAddStudent(GlobalKey<FormBuilderState> formKey) async {
-    if (formKey.currentState?.saveAndValidate() ?? false) {
-      final formData = formKey.currentState!.value;
-      final name = formData['name'] as String;
-      final whatsappNumber = formData['whatsappNumber'] as String;
+  Future<void> _handleAddStudent(String name, String whatsappNumber) async {
+    try {
+      await Provider.of<StudentProvider>(context, listen: false)
+          .addStudent(name.trim(), whatsappNumber.trim());
       
-      Navigator.of(context).pop(); // Close dialog
-      
-      try {
-        await Provider.of<StudentProvider>(context, listen: false)
-            .addStudent(name.trim(), whatsappNumber.trim());
-        
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('✅ $name added successfully!'),
-              backgroundColor: AppTheme.successColor,
-            ),
-          );
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('❌ Failed to add student: $e'),
-              backgroundColor: AppTheme.errorColor,
-            ),
-          );
-        }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('✅ $name added successfully!'),
+            backgroundColor: AppTheme.successColor,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ Failed to add student: $e'),
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
       }
     }
   }
@@ -547,8 +407,8 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
       case 'edit':
         _showEditStudentDialog(student);
         break;
-      case 'toggle':
-        _toggleStudentStatus(student);
+      case 'assignments':
+        _showStudentAssignments(student);
         break;
       case 'delete':
         _showDeleteConfirmDialog(student);
@@ -557,107 +417,24 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
   }
 
   void _showEditStudentDialog(Student student) {
-    final formKey = GlobalKey<FormBuilderState>();
-    
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Edit Student'),
-        content: SizedBox(
-          width: 400,
-          child: FormBuilder(
-            key: formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CustomTextField(
-                  name: 'name',
-                  label: 'Full Name',
-                  initialValue: student.name,
-                  prefixIcon: Icons.person,
-                  validator: FormBuilderValidators.compose([
-                    FormBuilderValidators.required(),
-                    FormBuilderValidators.minLength(2),
-                  ]),
-                ),
-                
-                const SizedBox(height: AppTheme.spacingL),
-                
-                CustomTextField(
-                  name: 'whatsappNumber',
-                  label: 'WhatsApp Number',
-                  initialValue: student.whatsappNumber,
-                  keyboardType: TextInputType.phone,
-                  prefixIcon: Icons.phone,
-                  validator: FormBuilderValidators.compose([
-                    FormBuilderValidators.required(),
-                    FormBuilderValidators.minLength(10),
-                  ]),
-                ),
-              ],
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          CustomButton(
-            text: 'Update',
-            onPressed: () => _handleUpdateStudent(formKey, student),
-            fullWidth: false,
-            width: 100,
-          ),
-        ],
+      builder: (dialogContext) => _EditStudentDialog(
+        student: student,
+        onSubmit: (name, whatsappNumber) => _handleUpdateStudent(student, name, whatsappNumber),
       ),
     );
   }
 
-  void _handleUpdateStudent(GlobalKey<FormBuilderState> formKey, Student student) async {
-    if (formKey.currentState?.saveAndValidate() ?? false) {
-      final formData = formKey.currentState!.value;
-      final name = formData['name'] as String;
-      final whatsappNumber = formData['whatsappNumber'] as String;
-      
-      Navigator.of(context).pop(); // Close dialog
-      
-      try {
-        await Provider.of<StudentProvider>(context, listen: false)
-            .updateStudent(student.id, name.trim(), whatsappNumber.trim());
-        
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('✅ ${student.name} updated successfully!'),
-              backgroundColor: AppTheme.successColor,
-            ),
-          );
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('❌ Failed to update student: $e'),
-              backgroundColor: AppTheme.errorColor,
-            ),
-          );
-        }
-      }
-    }
-  }
-
-  void _toggleStudentStatus(Student student) async {
+  Future<void> _handleUpdateStudent(Student student, String name, String whatsappNumber) async {
     try {
       await Provider.of<StudentProvider>(context, listen: false)
-          .toggleStudentStatus(student.id);
+          .updateStudent(student.id, name.trim(), whatsappNumber.trim());
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              '✅ ${student.name} ${student.isActive ? 'deactivated' : 'activated'} successfully!',
-            ),
+            content: Text('✅ ${student.name} updated successfully!'),
             backgroundColor: AppTheme.successColor,
           ),
         );
@@ -666,7 +443,7 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('❌ Failed to update student status: $e'),
+            content: Text('❌ Failed to update student: $e'),
             backgroundColor: AppTheme.errorColor,
           ),
         );
@@ -674,90 +451,172 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
     }
   }
 
-  void _showDeleteConfirmDialog(Student student) {
+  // NEW: Show student assignments with better debugging
+  void _showStudentAssignments(Student student) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Student'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Are you sure you want to delete this student?'),
-            const SizedBox(height: AppTheme.spacingM),
-            Container(
-              padding: const EdgeInsets.all(AppTheme.spacingM),
-              decoration: BoxDecoration(
-                color: AppTheme.backgroundColor,
-                borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                border: Border.all(color: AppTheme.borderColor),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Name: ${student.name}',
-                    style: const TextStyle(fontWeight: FontWeight.w600),
+        title: Text('${student.name}\'s Assignments'),
+        content: SizedBox(
+          width: 500,
+          height: 400,
+          child: FutureBuilder<List<Map<String, dynamic>>>(
+            future: Provider.of<StudentProvider>(context, listen: false)
+                .getStudentAssignments(student.id),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              
+              if (snapshot.hasError) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.error, size: 48, color: AppTheme.errorColor),
+                      const SizedBox(height: AppTheme.spacingM),
+                      Text('Error: ${snapshot.error}'),
+                    ],
                   ),
-                  Text('WhatsApp: ${student.whatsappNumber}'),
-                  Text(
-                    'Status: ${student.isActive ? 'Active' : 'Inactive'}',
-                    style: TextStyle(
-                      color: student.isActive ? AppTheme.successColor : AppTheme.warningColor,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: AppTheme.spacingM),
-            Container(
-              padding: const EdgeInsets.all(AppTheme.spacingS),
-              decoration: BoxDecoration(
-                color: AppTheme.errorColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(AppTheme.radiusS),
-              ),
-              child: const Row(
-                children: [
-                  Icon(
-                    Icons.warning,
-                    color: AppTheme.errorColor,
-                    size: 16,
-                  ),
-                  SizedBox(width: AppTheme.spacingS),
-                  Expanded(
-                    child: Text(
-                      'This action cannot be undone!',
-                      style: TextStyle(
-                        color: AppTheme.errorColor,
-                        fontWeight: FontWeight.w500,
+                );
+              }
+              
+              final assignments = snapshot.data ?? [];
+              
+              // DEBUG INFO
+              print('🔍 Student ID: ${student.id}');
+              print('📋 Assignments found: ${assignments.length}');
+              for (var assignment in assignments) {
+                print('📄 Assignment: ${assignment['id']} - Active: ${assignment['isActive']}');
+              }
+              
+              if (assignments.isEmpty) {
+                return Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.assignment_outlined, size: 48, color: AppTheme.textTertiary),
+                    const SizedBox(height: AppTheme.spacingM),
+                    const Text('No assignments found'),
+                    const SizedBox(height: AppTheme.spacingM),
+                    
+                    // DEBUG INFO DISPLAY
+                    Container(
+                      padding: const EdgeInsets.all(AppTheme.spacingM),
+                      decoration: BoxDecoration(
+                        color: AppTheme.warningColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Debug Info:',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: AppTheme.warningColor,
+                            ),
+                          ),
+                          const SizedBox(height: AppTheme.spacingS),
+                          Text('Student ID: ${student.id}'),
+                          Text('Student Name: ${student.name}'),
+                          Text('WhatsApp: ${student.whatsappNumber}'),
+                          const SizedBox(height: AppTheme.spacingS),
+                          const Text(
+                            'Check browser console for more details',
+                            style: TextStyle(
+                              fontStyle: FontStyle.italic,
+                              color: AppTheme.textSecondary,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+                  ],
+                );
+              }
+              
+              return ListView.builder(
+                itemCount: assignments.length,
+                itemBuilder: (context, index) {
+                  final assignment = assignments[index];
+                  final isActive = assignment['isActive'] ?? false;
+                  
+                  DateTime? dateAssigned;
+                  DateTime? expiryDate;
+                  
+                  try {
+                    if (assignment['dateAssigned'] != null) {
+                      dateAssigned = (assignment['dateAssigned'] as Timestamp).toDate();
+                    }
+                    if (assignment['expiryDate'] != null) {
+                      expiryDate = (assignment['expiryDate'] as Timestamp).toDate();
+                    }
+                  } catch (e) {
+                    print('❌ Error parsing dates: $e');
+                  }
+                  
+                  final emailId = assignment['emailId'] ?? 'Unknown';
+                  
+                  return Card(
+                    child: ListTile(
+                      leading: Icon(
+                        isActive ? Icons.check_circle : Icons.cancel,
+                        color: isActive ? AppTheme.successColor : AppTheme.errorColor,
+                      ),
+                      title: Text('Email ID: $emailId'),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (dateAssigned != null)
+                            Text('Assigned: ${dateAssigned.toString().substring(0, 10)}'),
+                          if (expiryDate != null)
+                            Text('Expires: ${expiryDate.toString().substring(0, 10)}'),
+                          Text(
+                            isActive ? 'Active' : 'Inactive',
+                            style: TextStyle(
+                              color: isActive ? AppTheme.successColor : AppTheme.errorColor,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          // DEBUG: Show assignment ID
+                          Text(
+                            'Assignment ID: ${assignment['id']}',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: AppTheme.textTertiary,
+                              fontFamily: 'monospace',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          CustomButton(
-            text: 'Delete',
-            style: CustomButtonStyle.danger,
-            onPressed: () => _handleDeleteStudent(student),
-            fullWidth: false,
-            width: 80,
+            child: const Text('Close'),
           ),
         ],
       ),
     );
   }
 
-  void _handleDeleteStudent(Student student) async {
-    Navigator.of(context).pop(); // Close dialog
-    
+  void _showDeleteConfirmDialog(Student student) {
+    showDialog(
+      context: context,
+      builder: (context) => _DeleteStudentDialog(
+        student: student,
+        onConfirm: () => _handleDeleteStudent(student),
+      ),
+    );
+  }
+
+  Future<void> _handleDeleteStudent(Student student) async {
     try {
       await Provider.of<StudentProvider>(context, listen: false)
           .deleteStudent(student.id);
@@ -779,6 +638,342 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
           ),
         );
       }
+    }
+  }
+}
+
+class _DeleteStudentDialog extends StatefulWidget {
+  final Student student;
+  final VoidCallback onConfirm;
+
+  const _DeleteStudentDialog({
+    required this.student,
+    required this.onConfirm,
+  });
+
+  @override
+  State<_DeleteStudentDialog> createState() => _DeleteStudentDialogState();
+}
+
+class _DeleteStudentDialogState extends State<_DeleteStudentDialog> {
+  bool _isDeleting = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Delete Student'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Are you sure you want to delete this student?'),
+          const SizedBox(height: AppTheme.spacingM),
+          Container(
+            padding: const EdgeInsets.all(AppTheme.spacingM),
+            decoration: BoxDecoration(
+              color: AppTheme.backgroundColor,
+              borderRadius: BorderRadius.circular(AppTheme.radiusM),
+              border: Border.all(color: AppTheme.borderColor),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Name: ${widget.student.name}',
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+                Text('WhatsApp: ${widget.student.whatsappNumber}'),
+                Text('ID: ${widget.student.id}'),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppTheme.spacingM),
+          Container(
+            padding: const EdgeInsets.all(AppTheme.spacingS),
+            decoration: BoxDecoration(
+              color: AppTheme.errorColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(AppTheme.radiusS),
+            ),
+            child: const Row(
+              children: [
+                Icon(
+                  Icons.warning,
+                  color: AppTheme.errorColor,
+                  size: 16,
+                ),
+                SizedBox(width: AppTheme.spacingS),
+                Expanded(
+                  child: Text(
+                    'This action cannot be undone!',
+                    style: TextStyle(
+                      color: AppTheme.errorColor,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: _isDeleting ? null : () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        CustomButton(
+          text: _isDeleting ? 'Deleting...' : 'Delete',
+          style: CustomButtonStyle.danger,
+          isLoading: _isDeleting,
+          onPressed: _isDeleting ? null : _handleDelete,
+          fullWidth: false,
+          width: 80,
+        ),
+      ],
+    );
+  }
+
+  Future<void> _handleDelete() async {
+    setState(() => _isDeleting = true);
+    
+    // Close dialog first
+    Navigator.of(context).pop();
+    
+    // Then call the parent's delete handler
+    widget.onConfirm();
+  }
+}
+
+// SEPARATE DIALOG WIDGETS TO AVOID NAVIGATION CONFLICTS
+
+class _AddStudentDialog extends StatefulWidget {
+  final Function(String name, String whatsappNumber) onSubmit;
+
+  const _AddStudentDialog({
+    required this.onSubmit,
+  });
+
+  @override
+  State<_AddStudentDialog> createState() => _AddStudentDialogState();
+}
+
+class _AddStudentDialogState extends State<_AddStudentDialog> {
+  final _formKey = GlobalKey<FormBuilderState>();
+  bool _isSubmitting = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Add New Student'),
+      content: SizedBox(
+        width: 400,
+        child: FormBuilder(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CustomTextField(
+                name: 'name',
+                label: 'Full Name',
+                hintText: 'Enter student\'s full name',
+                prefixIcon: Icons.person,
+                validator: FormBuilderValidators.compose([
+                  FormBuilderValidators.required(),
+                  FormBuilderValidators.minLength(2),
+                ]),
+              ),
+              
+              const SizedBox(height: AppTheme.spacingL),
+              
+              CustomTextField(
+                name: 'whatsappNumber',
+                label: 'WhatsApp Number',
+                hintText: 'Enter WhatsApp number (e.g., 447123456789)',
+                keyboardType: TextInputType.phone,
+                prefixIcon: Icons.phone,
+                validator: FormBuilderValidators.compose([
+                  FormBuilderValidators.required(),
+                  FormBuilderValidators.minLength(10),
+                ]),
+              ),
+              
+              const SizedBox(height: AppTheme.spacingM),
+              
+              Container(
+                padding: const EdgeInsets.all(AppTheme.spacingM),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.info_outline,
+                      color: AppTheme.primaryColor,
+                      size: 20,
+                    ),
+                    const SizedBox(width: AppTheme.spacingS),
+                    Expanded(
+                      child: Text(
+                        'WhatsApp number will be used as the student ID',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppTheme.primaryColor,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        CustomButton(
+          text: _isSubmitting ? 'Adding...' : 'Add Student',
+          isLoading: _isSubmitting,
+          onPressed: _isSubmitting ? null : _handleSubmit,
+          fullWidth: false,
+          width: 120,
+        ),
+      ],
+    );
+  }
+
+  Future<void> _handleSubmit() async {
+    if (_formKey.currentState?.saveAndValidate() ?? false) {
+      final formData = _formKey.currentState!.value;
+      final name = formData['name'] as String;
+      final whatsappNumber = formData['whatsappNumber'] as String;
+      
+      setState(() => _isSubmitting = true);
+      
+      // Close dialog first
+      Navigator.of(context).pop();
+      
+      // Then call the parent's submit handler
+      await widget.onSubmit(name, whatsappNumber);
+    }
+  }
+}
+
+class _EditStudentDialog extends StatefulWidget {
+  final Student student;
+  final Function(String name, String whatsappNumber) onSubmit;
+
+  const _EditStudentDialog({
+    required this.student,
+    required this.onSubmit,
+  });
+
+  @override
+  State<_EditStudentDialog> createState() => _EditStudentDialogState();
+}
+
+class _EditStudentDialogState extends State<_EditStudentDialog> {
+  final _formKey = GlobalKey<FormBuilderState>();
+  bool _isSubmitting = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Edit Student'),
+      content: SizedBox(
+        width: 400,
+        child: FormBuilder(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CustomTextField(
+                name: 'name',
+                label: 'Full Name',
+                initialValue: widget.student.name,
+                prefixIcon: Icons.person,
+                validator: FormBuilderValidators.compose([
+                  FormBuilderValidators.required(),
+                  FormBuilderValidators.minLength(2),
+                ]),
+              ),
+              
+              const SizedBox(height: AppTheme.spacingL),
+              
+              CustomTextField(
+                name: 'whatsappNumber',
+                label: 'WhatsApp Number',
+                initialValue: widget.student.whatsappNumber,
+                keyboardType: TextInputType.phone,
+                prefixIcon: Icons.phone,
+                validator: FormBuilderValidators.compose([
+                  FormBuilderValidators.required(),
+                  FormBuilderValidators.minLength(10),
+                ]),
+              ),
+              
+              const SizedBox(height: AppTheme.spacingM),
+              
+              Container(
+                padding: const EdgeInsets.all(AppTheme.spacingM),
+                decoration: BoxDecoration(
+                  color: AppTheme.warningColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.warning_amber,
+                      color: AppTheme.warningColor,
+                      size: 20,
+                    ),
+                    const SizedBox(width: AppTheme.spacingS),
+                    Expanded(
+                      child: Text(
+                        'Changing WhatsApp number will update the student ID and all related assignments',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppTheme.warningColor,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        CustomButton(
+          text: _isSubmitting ? 'Updating...' : 'Update',
+          isLoading: _isSubmitting,
+          onPressed: _isSubmitting ? null : _handleSubmit,
+          fullWidth: false,
+          width: 100,
+        ),
+      ],
+    );
+  }
+
+  Future<void> _handleSubmit() async {
+    if (_formKey.currentState?.saveAndValidate() ?? false) {
+      final formData = _formKey.currentState!.value;
+      final name = formData['name'] as String;
+      final whatsappNumber = formData['whatsappNumber'] as String;
+      
+      setState(() => _isSubmitting = true);
+      
+      // Close dialog first
+      Navigator.of(context).pop();
+      
+      // Then call the parent's submit handler
+      await widget.onSubmit(name, whatsappNumber);
     }
   }
 }

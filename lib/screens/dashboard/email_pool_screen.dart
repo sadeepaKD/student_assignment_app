@@ -394,121 +394,35 @@ class _EmailPoolScreenState extends State<EmailPoolScreen> {
   }
 
   void _showAddEmailDialog() {
-    final formKey = GlobalKey<FormBuilderState>();
-    
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Add Email to Pool'),
-        content: SizedBox(
-          width: 400,
-          child: FormBuilder(
-            key: formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CustomTextField(
-                  name: 'email',
-                  label: 'ChatGPT Email Address',
-                  hintText: 'Enter ChatGPT email address',
-                  keyboardType: TextInputType.emailAddress,
-                  prefixIcon: Icons.email,
-                  validator: FormBuilderValidators.compose([
-                    FormBuilderValidators.required(),
-                    FormBuilderValidators.email(),
-                  ]),
-                ),
-                
-                const SizedBox(height: AppTheme.spacingL),
-                
-                CustomTextField(
-                  name: 'totpSecret',
-                  label: 'TOTP Secret',
-                  hintText: 'Enter TOTP secret key',
-                  prefixIcon: Icons.security,
-                  validator: FormBuilderValidators.compose([
-                    FormBuilderValidators.required(),
-                    FormBuilderValidators.minLength(10),
-                  ]),
-                ),
-                
-                const SizedBox(height: AppTheme.spacingM),
-                
-                Container(
-                  padding: const EdgeInsets.all(AppTheme.spacingM),
-                  decoration: BoxDecoration(
-                    color: AppTheme.backgroundColor,
-                    borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                    border: Border.all(color: AppTheme.borderColor),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.info_outline,
-                        color: AppTheme.primaryColor,
-                        size: 20,
-                      ),
-                      const SizedBox(width: AppTheme.spacingS),
-                      Expanded(
-                        child: Text(
-                          'TOTP secret is used for 2FA authentication. Keep it secure!',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: AppTheme.textSecondary,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          CustomButton(
-            text: 'Add Email',
-            onPressed: () => _handleAddEmail(formKey),
-            fullWidth: false,
-            width: 100,
-          ),
-        ],
+      builder: (dialogContext) => _AddEmailDialog(
+        onSubmit: _handleAddEmail,
       ),
     );
   }
 
-  void _handleAddEmail(GlobalKey<FormBuilderState> formKey) async {
-    if (formKey.currentState?.saveAndValidate() ?? false) {
-      final formData = formKey.currentState!.value;
-      final email = formData['email'] as String;
-      final totpSecret = formData['totpSecret'] as String;
+  Future<void> _handleAddEmail(String email, String totpSecret) async {
+    try {
+      await Provider.of<EmailPoolProvider>(context, listen: false)
+          .addEmailToPool(email, totpSecret);
       
-      Navigator.of(context).pop(); // Close dialog
-      
-      try {
-        await Provider.of<EmailPoolProvider>(context, listen: false)
-            .addEmailToPool(email, totpSecret);
-        
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('✅ $email added to pool successfully!'),
-              backgroundColor: AppTheme.successColor,
-            ),
-          );
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('❌ Failed to add email: $e'),
-              backgroundColor: AppTheme.errorColor,
-            ),
-          );
-        }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('✅ $email added to pool successfully!'),
+            backgroundColor: AppTheme.successColor,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ Failed to add email: $e'),
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
       }
     }
   }
@@ -614,98 +528,42 @@ class _EmailPoolScreenState extends State<EmailPoolScreen> {
   }
 
   void _showEditEmailDialog(EmailPool email) {
-    final formKey = GlobalKey<FormBuilderState>();
-    
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Edit Email'),
-        content: SizedBox(
-          width: 400,
-          child: FormBuilder(
-            key: formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CustomTextField(
-                  name: 'email',
-                  label: 'ChatGPT Email Address',
-                  initialValue: email.email,
-                  keyboardType: TextInputType.emailAddress,
-                  prefixIcon: Icons.email,
-                  validator: FormBuilderValidators.compose([
-                    FormBuilderValidators.required(),
-                    FormBuilderValidators.email(),
-                  ]),
-                ),
-                
-                const SizedBox(height: AppTheme.spacingL),
-                
-                CustomTextField(
-                  name: 'totpSecret',
-                  label: 'TOTP Secret',
-                  initialValue: email.totpSecret,
-                  prefixIcon: Icons.security,
-                  validator: FormBuilderValidators.compose([
-                    FormBuilderValidators.required(),
-                    FormBuilderValidators.minLength(10),
-                  ]),
-                ),
-              ],
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          CustomButton(
-            text: 'Update',
-            onPressed: () => _handleUpdateEmail(formKey, email),
-            fullWidth: false,
-            width: 80,
-          ),
-        ],
+      builder: (dialogContext) => _EditEmailDialog(
+        email: email,
+        onSubmit: (newEmail, newTotpSecret) => _handleUpdateEmail(email, newEmail, newTotpSecret),
       ),
     );
   }
 
-  void _handleUpdateEmail(GlobalKey<FormBuilderState> formKey, EmailPool email) async {
-    if (formKey.currentState?.saveAndValidate() ?? false) {
-      final formData = formKey.currentState!.value;
-      final newEmail = formData['email'] as String;
-      final newTotpSecret = formData['totpSecret'] as String;
+  Future<void> _handleUpdateEmail(EmailPool email, String newEmail, String newTotpSecret) async {
+    try {
+      final updatedEmail = email.copyWith(
+        email: newEmail,
+        totpSecret: newTotpSecret,
+        updatedAt: DateTime.now(),
+      );
       
-      Navigator.of(context).pop(); // Close dialog
+      await Provider.of<EmailPoolProvider>(context, listen: false)
+          .updateEmailInPool(updatedEmail);
       
-      try {
-        final updatedEmail = email.copyWith(
-          email: newEmail,
-          totpSecret: newTotpSecret,
-          updatedAt: DateTime.now(),
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('✅ $newEmail updated successfully!'),
+            backgroundColor: AppTheme.successColor,
+          ),
         );
-        
-        await Provider.of<EmailPoolProvider>(context, listen: false)
-            .updateEmailInPool(updatedEmail);
-        
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('✅ $newEmail updated successfully!'),
-              backgroundColor: AppTheme.successColor,
-            ),
-          );
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('❌ Failed to update email: $e'),
-              backgroundColor: AppTheme.errorColor,
-            ),
-          );
-        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ Failed to update email: $e'),
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
       }
     }
   }
@@ -792,10 +650,10 @@ class _EmailPoolScreenState extends State<EmailPoolScreen> {
     );
   }
 
-  void _handleDeleteEmail(EmailPool email) async {
-    Navigator.of(context).pop(); // Close dialog
-    
+  Future<void> _handleDeleteEmail(EmailPool email) async {
     try {
+      Navigator.of(context).pop(); // Close dialog first
+      
       await Provider.of<EmailPoolProvider>(context, listen: false)
           .deleteEmailFromPool(email.id);
       
@@ -816,6 +674,213 @@ class _EmailPoolScreenState extends State<EmailPoolScreen> {
           ),
         );
       }
+    }
+  }
+}
+
+// SEPARATE DIALOG WIDGETS TO AVOID NAVIGATION CONFLICTS
+
+class _AddEmailDialog extends StatefulWidget {
+  final Function(String email, String totpSecret) onSubmit;
+
+  const _AddEmailDialog({
+    required this.onSubmit,
+  });
+
+  @override
+  State<_AddEmailDialog> createState() => _AddEmailDialogState();
+}
+
+class _AddEmailDialogState extends State<_AddEmailDialog> {
+  final _formKey = GlobalKey<FormBuilderState>();
+  bool _isSubmitting = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Add Email to Pool'),
+      content: SizedBox(
+        width: 400,
+        child: FormBuilder(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CustomTextField(
+                name: 'email',
+                label: 'ChatGPT Email Address',
+                hintText: 'Enter ChatGPT email address',
+                keyboardType: TextInputType.emailAddress,
+                prefixIcon: Icons.email,
+                validator: FormBuilderValidators.compose([
+                  FormBuilderValidators.required(),
+                  FormBuilderValidators.email(),
+                ]),
+              ),
+              
+              const SizedBox(height: AppTheme.spacingL),
+              
+              CustomTextField(
+                name: 'totpSecret',
+                label: 'TOTP Secret',
+                hintText: 'Enter TOTP secret key',
+                prefixIcon: Icons.security,
+                validator: FormBuilderValidators.compose([
+                  FormBuilderValidators.required(),
+                  FormBuilderValidators.minLength(10),
+                ]),
+              ),
+              
+              const SizedBox(height: AppTheme.spacingM),
+              
+              Container(
+                padding: const EdgeInsets.all(AppTheme.spacingM),
+                decoration: BoxDecoration(
+                  color: AppTheme.backgroundColor,
+                  borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                  border: Border.all(color: AppTheme.borderColor),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.info_outline,
+                      color: AppTheme.primaryColor,
+                      size: 20,
+                    ),
+                    const SizedBox(width: AppTheme.spacingS),
+                    Expanded(
+                      child: Text(
+                        'TOTP secret is used for 2FA authentication. Keep it secure!',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppTheme.textSecondary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        CustomButton(
+          text: _isSubmitting ? 'Adding...' : 'Add Email',
+          isLoading: _isSubmitting,
+          onPressed: _isSubmitting ? null : _handleSubmit,
+          fullWidth: false,
+          width: 100,
+        ),
+      ],
+    );
+  }
+
+  Future<void> _handleSubmit() async {
+    if (_formKey.currentState?.saveAndValidate() ?? false) {
+      final formData = _formKey.currentState!.value;
+      final email = formData['email'] as String;
+      final totpSecret = formData['totpSecret'] as String;
+      
+      setState(() => _isSubmitting = true);
+      
+      // Close dialog first
+      Navigator.of(context).pop();
+      
+      // Then call the parent's submit handler
+      await widget.onSubmit(email, totpSecret);
+    }
+  }
+}
+
+class _EditEmailDialog extends StatefulWidget {
+  final EmailPool email;
+  final Function(String email, String totpSecret) onSubmit;
+
+  const _EditEmailDialog({
+    required this.email,
+    required this.onSubmit,
+  });
+
+  @override
+  State<_EditEmailDialog> createState() => _EditEmailDialogState();
+}
+
+class _EditEmailDialogState extends State<_EditEmailDialog> {
+  final _formKey = GlobalKey<FormBuilderState>();
+  bool _isSubmitting = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Edit Email'),
+      content: SizedBox(
+        width: 400,
+        child: FormBuilder(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CustomTextField(
+                name: 'email',
+                label: 'ChatGPT Email Address',
+                initialValue: widget.email.email,
+                keyboardType: TextInputType.emailAddress,
+                prefixIcon: Icons.email,
+                validator: FormBuilderValidators.compose([
+                  FormBuilderValidators.required(),
+                  FormBuilderValidators.email(),
+                ]),
+              ),
+              
+              const SizedBox(height: AppTheme.spacingL),
+              
+              CustomTextField(
+                name: 'totpSecret',
+                label: 'TOTP Secret',
+                initialValue: widget.email.totpSecret,
+                prefixIcon: Icons.security,
+                validator: FormBuilderValidators.compose([
+                  FormBuilderValidators.required(),
+                  FormBuilderValidators.minLength(10),
+                ]),
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        CustomButton(
+          text: _isSubmitting ? 'Updating...' : 'Update',
+          isLoading: _isSubmitting,
+          onPressed: _isSubmitting ? null : _handleSubmit,
+          fullWidth: false,
+          width: 80,
+        ),
+      ],
+    );
+  }
+
+  Future<void> _handleSubmit() async {
+    if (_formKey.currentState?.saveAndValidate() ?? false) {
+      final formData = _formKey.currentState!.value;
+      final email = formData['email'] as String;
+      final totpSecret = formData['totpSecret'] as String;
+      
+      setState(() => _isSubmitting = true);
+      
+      // Close dialog first
+      Navigator.of(context).pop();
+      
+      // Then call the parent's submit handler
+      await widget.onSubmit(email, totpSecret);
     }
   }
 }

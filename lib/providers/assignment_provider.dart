@@ -112,15 +112,21 @@ class AssignmentProvider extends ChangeNotifier {
     _assignmentsWithDetails = detailedAssignments;
   }
 
-  // FIXED: Create assignment - emails stay available for multiple students
+  // FIXED: Create assignment with readable document ID
   Future<void> createAssignment(String studentId, String emailId, {DateTime? customDate}) async {
     try {
       _setLoading(true);
 
-      // Check if email exists (but don't check availability - emails can be shared)
+      // Check if email exists
       final email = _emailsCache[emailId];
       if (email == null) {
         throw Exception('Email not found');
+      }
+
+      // Get student for readable ID
+      final student = _studentsCache[studentId];
+      if (student == null) {
+        throw Exception('Student not found');
       }
 
       // Check if this EXACT combination already exists and is active
@@ -137,6 +143,11 @@ class AssignmentProvider extends ChangeNotifier {
       final assignmentDate = customDate ?? DateTime.now();
       final expiryDate = assignmentDate.add(const Duration(days: 30));
 
+      // READABLE DOCUMENT ID FORMAT: studentPhone_emailPrefix_timestamp
+      final emailPrefix = email.email.split('@')[0]; // Get part before @
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final readableId = '${studentId}_${emailPrefix}_$timestamp';
+
       final assignmentData = {
         'studentId': studentId,
         'emailId': emailId,
@@ -146,13 +157,12 @@ class AssignmentProvider extends ChangeNotifier {
         'createdAt': FieldValue.serverTimestamp(),
       };
 
-      // FIXED: Only create assignment - don't update email availability
-      final assignmentRef = _firestore.collection('assignments').doc();
-      await assignmentRef.set(assignmentData);
+      // FIXED: Use readable document ID instead of random
+      await _firestore.collection('assignments').doc(readableId).set(assignmentData);
 
       // Update local cache
       final newAssignment = Assignment(
-        id: assignmentRef.id,
+        id: readableId, // Readable ID
         studentId: studentId,
         emailId: emailId,
         dateAssigned: assignmentDate,
@@ -162,8 +172,6 @@ class AssignmentProvider extends ChangeNotifier {
       );
 
       _assignments.insert(0, newAssignment);
-      
-      // Note: Email stays available for other assignments
       await _buildAssignmentsWithDetails();
       
     } catch (e) {
@@ -174,7 +182,25 @@ class AssignmentProvider extends ChangeNotifier {
     }
   }
 
-  // FIXED: Toggle assignment - don't affect email availability
+  // Generate readable assignment ID
+  String _generateReadableAssignmentId(String studentId, String emailId) {
+    final email = _emailsCache[emailId];
+    final student = _studentsCache[studentId];
+    
+    if (email == null || student == null) {
+      // Fallback to timestamp if data not available
+      return 'assignment_${DateTime.now().millisecondsSinceEpoch}';
+    }
+
+    final emailPrefix = email.email.split('@')[0]; // Get part before @
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    
+    // Format: studentPhone_emailPrefix_timestamp
+    // Example: 1111111111_danielferaro_1720345678900
+    return '${studentId}_${emailPrefix}_$timestamp';
+  }
+
+  // Toggle assignment - don't affect email availability
   Future<void> toggleAssignmentStatus(String assignmentId) async {
     try {
       final assignmentIndex = _assignments.indexWhere((a) => a.id == assignmentId);
@@ -185,7 +211,6 @@ class AssignmentProvider extends ChangeNotifier {
       final assignment = _assignments[assignmentIndex];
       final newStatus = !assignment.isActive;
 
-      // FIXED: Only update assignment status - don't touch email availability
       await _firestore.collection('assignments').doc(assignmentId).update({
         'isActive': newStatus,
       });
@@ -208,10 +233,9 @@ class AssignmentProvider extends ChangeNotifier {
     }
   }
 
-  // FIXED: Delete assignment - don't affect email availability
+  // Delete assignment
   Future<void> deleteAssignment(String assignmentId) async {
     try {
-      // FIXED: Only delete assignment - don't touch email availability
       await _firestore.collection('assignments').doc(assignmentId).delete();
 
       // Update local cache
@@ -270,7 +294,7 @@ class AssignmentProvider extends ChangeNotifier {
         .toList();
   }
 
-  // FIXED: Process expired assignments - only deactivate, don't touch email availability
+  // Process expired assignments
   Future<void> processExpiredAssignments() async {
     try {
       final expiredAssignments = _assignments
@@ -325,6 +349,51 @@ class AssignmentProvider extends ChangeNotifier {
       
       return true;
     }).toList();
+  }
+
+  // MIGRATION HELPER: Convert existing random IDs to readable format
+  Future<void> migrateAssignmentIdsToReadable() async {
+    try {
+      _setLoading(true);
+      
+      final allAssignments = await _firestore.collection('assignments').get();
+      final batch = _firestore.batch();
+      
+      for (var doc in allAssignments.docs) {
+        final data = doc.data();
+        final studentId = data['studentId'] as String;
+        final emailId = data['emailId'] as String;
+        
+        // Check if ID is already readable (contains underscores)
+        if (doc.id.contains('_')) {
+          continue; // Skip already migrated assignments
+        }
+        
+        // Generate new readable ID
+        final email = _emailsCache[emailId];
+        if (email != null) {
+          final emailPrefix = email.email.split('@')[0];
+          final timestamp = DateTime.now().millisecondsSinceEpoch;
+          final newId = '${studentId}_${emailPrefix}_$timestamp';
+          
+          // Create new document with readable ID
+          final newDocRef = _firestore.collection('assignments').doc(newId);
+          batch.set(newDocRef, data);
+          
+          // Delete old document
+          batch.delete(doc.reference);
+        }
+      }
+      
+      await batch.commit();
+      await fetchAssignments(forceRefresh: true);
+      
+    } catch (e) {
+      _setError('Migration failed: ${e.toString()}');
+      rethrow;
+    } finally {
+      _setLoading(false);
+    }
   }
 
   void clearCache() {
