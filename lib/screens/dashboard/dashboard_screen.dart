@@ -416,9 +416,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   void _navigateToAssignments() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Assignments screen - Coming soon!')),
-    );
+    context.go('/dashboard/assignments');
   }
 
   void _handleLogout(BuildContext context) {

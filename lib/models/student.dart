@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart'; // Added this import for Color and IconData
 
 class Student {
   final String id;
@@ -187,14 +188,8 @@ class Assignment {
     };
   }
 
-  // Check if assignment is expired
-  bool get isExpired => DateTime.now().isAfter(expiryDate);
-
-  // Days remaining before expiry
-  int get daysRemaining {
-    final difference = expiryDate.difference(DateTime.now()).inDays;
-    return difference > 0 ? difference : 0;
-  }
+  // REMOVED: Duplicate methods that are now in the extension
+  // The extension provides these same methods with additional functionality
 }
 
 class AppUser {
@@ -247,4 +242,67 @@ class AppUser {
   }
 
   bool get isAdmin => role == 'admin';
+}
+
+// ENHANCED Assignment Extension with all functionality
+extension AssignmentExtensions on Assignment {
+  // Check if assignment is expired
+  bool get isExpired => DateTime.now().isAfter(expiryDate);
+
+  // Check if assignment is expiring soon (within 7 days)
+  bool get isExpiringSoon {
+    if (isExpired || !isActive) return false;
+    final daysUntilExpiry = expiryDate.difference(DateTime.now()).inDays;
+    return daysUntilExpiry <= 7 && daysUntilExpiry >= 0;
+  }
+
+  // Days remaining before expiry (can be negative if expired)
+  int get daysRemaining {
+    return expiryDate.difference(DateTime.now()).inDays;
+  }
+
+  // Human readable status
+  String get statusText {
+    if (isExpired) return 'EXPIRED';
+    if (!isActive) return 'INACTIVE';
+    if (isExpiringSoon) return 'EXPIRING SOON';
+    return 'ACTIVE';
+  }
+
+  // Status color for UI
+  Color get statusColor {
+    if (isExpired) return const Color(0xFFEF4444); // Red
+    if (!isActive) return const Color(0xFF94A3B8); // Gray
+    if (isExpiringSoon) return const Color(0xFFF59E0B); // Orange
+    return const Color(0xFF10B981); // Green
+  }
+
+  // Status icon for UI
+  IconData get statusIcon {
+    if (isExpired) return Icons.cancel;
+    if (!isActive) return Icons.pause_circle;
+    if (isExpiringSoon) return Icons.warning;
+    return Icons.check_circle;
+  }
+
+  // Copy method for Assignment
+  Assignment copyWith({
+    String? id,
+    String? studentId,
+    String? emailId,
+    DateTime? dateAssigned,
+    bool? isActive,
+    DateTime? expiryDate,
+    DateTime? createdAt,
+  }) {
+    return Assignment(
+      id: id ?? this.id,
+      studentId: studentId ?? this.studentId,
+      emailId: emailId ?? this.emailId,
+      dateAssigned: dateAssigned ?? this.dateAssigned,
+      isActive: isActive ?? this.isActive,
+      expiryDate: expiryDate ?? this.expiryDate,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
 }

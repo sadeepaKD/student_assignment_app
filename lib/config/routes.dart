@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+
 import '../providers/auth_provider.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/dashboard/dashboard_screen.dart';
 import '../screens/dashboard/email_pool_screen.dart';
 import '../screens/dashboard/student_management_screen.dart';
+import '../screens/dashboard/assignment_management_screen.dart';
 
 class AppRouter {
   static GoRouter get router => GoRouter(
@@ -49,12 +51,11 @@ class AppRouter {
             name: 'students',
             builder: (context, state) => const StudentManagementScreen(),
           ),
-          // TODO: Add assignments route
-          // GoRoute(
-          //   path: '/dashboard/assignments',
-          //   name: 'assignments',
-          //   builder: (context, state) => const AssignmentsScreen(),
-          // ),
+          GoRoute(
+            path: '/dashboard/assignments',
+            name: 'assignments',
+            builder: (context, state) => const AssignmentManagementScreen(),
+          ),
         ],
       ),
     ],
@@ -182,7 +183,6 @@ class DashboardLayout extends StatelessWidget {
                   title: 'Assignments',
                   route: '/dashboard/assignments',
                   isSelected: currentRoute == '/dashboard/assignments',
-                  isDisabled: true, // TODO: Remove when assignments screen is ready
                 ),
                 const Divider(),
                 _buildDrawerItem(
@@ -191,7 +191,7 @@ class DashboardLayout extends StatelessWidget {
                   title: 'Settings',
                   route: '/dashboard/settings',
                   isSelected: false,
-                  isDisabled: true, // TODO: Add settings screen
+                  isDisabled: true, // Placeholder for future
                 ),
               ],
             ),
@@ -256,7 +256,7 @@ class DashboardLayout extends StatelessWidget {
 
   String _getPageTitle(BuildContext context) {
     final currentRoute = GoRouterState.of(context).matchedLocation;
-    
+
     switch (currentRoute) {
       case '/dashboard':
         return 'Dashboard';
