@@ -27,6 +27,7 @@ class AppTheme {
   static const double spacingXxl = 48.0;
   
   // Border Radius
+  static const double radiusXs = 2.0; // Added: Extra small radius
   static const double radiusS = 4.0;
   static const double radiusM = 8.0;
   static const double radiusL = 12.0;

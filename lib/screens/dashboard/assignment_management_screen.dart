@@ -23,6 +23,7 @@ class _AssignmentManagementScreenState extends State<AssignmentManagementScreen>
   String _selectedFilter = 'all';
   final TextEditingController _searchController = TextEditingController();
   bool _isInitialized = false;
+  bool _showStats = false;
 
   @override
   void initState() {
@@ -77,130 +78,81 @@ class _AssignmentManagementScreenState extends State<AssignmentManagementScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Assignment Management'),
+        title: const Text('Assignments'),
+        titleTextStyle: Theme.of(context).textTheme.titleLarge?.copyWith(
+          fontWeight: FontWeight.bold,
+        ),
+        toolbarHeight: 48,
         actions: [
+          IconButton(
+            icon: Icon(_showStats ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down),
+            onPressed: () => setState(() => _showStats = !_showStats),
+            tooltip: _showStats ? 'Hide Stats' : 'Show Stats',
+            iconSize: 18,
+          ),
           Consumer<AssignmentProvider>(
             builder: (context, provider, child) {
               return IconButton(
                 onPressed: provider.isLoading ? null : _processExpiredAssignments,
                 icon: provider.isLoading 
                     ? const SizedBox(
-                        width: 20,
-                        height: 20,
+                        width: 14,
+                        height: 14,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.refresh),
-                tooltip: 'Process Expired Assignments',
+                tooltip: 'Process Expired',
+                iconSize: 18,
               );
             },
           ),
           Padding(
-            padding: const EdgeInsets.all(8.0),
+            padding: const EdgeInsets.all(2.0),
             child: CustomButton(
-              text: 'New Assignment',
-              icon: Icons.assignment_add,
+              text: 'New',
+              icon: Icons.add,
               onPressed: _showCreateAssignmentDialog,
               fullWidth: false,
-              width: 160,
+              width: 70,
+              height: 32,
             ),
           ),
         ],
       ),
-      body: Consumer<AssignmentProvider>(
-        builder: (context, assignmentProvider, child) {
-          if (assignmentProvider.isLoading) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const CircularProgressIndicator(),
-                  const SizedBox(height: AppTheme.spacingM),
-                  Text(
-                    'Loading assignments...',
-                    style: Theme.of(context).textTheme.bodyLarge,
-                  ),
-                ],
-              ),
-            );
-          }
-
-          if (assignmentProvider.error != null) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(
-                    Icons.error_outline,
-                    size: 64,
-                    color: AppTheme.errorColor,
-                  ),
-                  const SizedBox(height: AppTheme.spacingM),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: AppTheme.spacingL),
-                    child: Text(
-                      'Error: ${assignmentProvider.error}',
-                      style: Theme.of(context).textTheme.bodyLarge,
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                  const SizedBox(height: AppTheme.spacingL),
-                  CustomButton(
-                    text: 'Retry',
-                    onPressed: () {
-                      assignmentProvider.clearError();
-                      _initializeData();
-                    },
-                    fullWidth: false,
-                    width: 100,
-                  ),
-                ],
-              ),
-            );
-          }
-
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final padding = constraints.maxWidth > 600 ? AppTheme.spacingS : AppTheme.spacingXs;
           return Padding(
-            padding: const EdgeInsets.all(AppTheme.spacingL),
+            padding: EdgeInsets.all(padding),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 _buildSearchAndFilters(),
-                const SizedBox(height: AppTheme.spacingL),
-                _buildStatsCards(assignmentProvider),
-                const SizedBox(height: AppTheme.spacingXl),
+                if (_showStats) _buildStatsSummary(),
+                const SizedBox(height: AppTheme.spacingXs),
                 Expanded(
+                  flex: 1,
                   child: Card(
+                    elevation: 1,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppTheme.radiusXs),
+                    ),
                     child: Padding(
-                      padding: const EdgeInsets.all(AppTheme.spacingL),
+                      padding: const EdgeInsets.all(AppTheme.spacingXs),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Active Assignments',
-                                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                    Text(
-                                      'Monitor and manage student email assignments',
-                                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                        color: AppTheme.textSecondary,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              _buildFilterDropdown(),
-                            ],
+                          Text(
+                            'Assignments',
+                            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
-                          const SizedBox(height: AppTheme.spacingL),
+                          const SizedBox(height: AppTheme.spacingXs),
+                          _buildFilterDropdown(),
+                          const SizedBox(height: AppTheme.spacingXs),
                           Expanded(
-                            child: _buildAssignmentsList(assignmentProvider),
+                            child: _buildAssignmentsList(),
                           ),
                         ],
                       ),
@@ -217,52 +169,112 @@ class _AssignmentManagementScreenState extends State<AssignmentManagementScreen>
 
   Widget _buildSearchAndFilters() {
     return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppTheme.radiusXs),
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(AppTheme.spacingM),
-        child: TextField(
-          controller: _searchController,
-          decoration: InputDecoration(
-            hintText: 'Search by student name, email, or WhatsApp...',
-            prefixIcon: const Icon(Icons.search),
-            suffixIcon: _searchController.text.isNotEmpty
-                ? IconButton(
-                    onPressed: () {
-                      _searchController.clear();
-                      setState(() {});
-                    },
-                    icon: const Icon(Icons.clear),
-                  )
-                : null,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppTheme.radiusM),
-              borderSide: BorderSide.none,
+        padding: const EdgeInsets.all(AppTheme.spacingXs),
+        child: Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _searchController,
+                decoration: InputDecoration(
+                  hintText: 'Search...',
+                  prefixIcon: const Icon(Icons.search, size: 18),
+                  suffixIcon: _searchController.text.isNotEmpty
+                      ? IconButton(
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() {});
+                          },
+                          icon: const Icon(Icons.clear, size: 18),
+                        )
+                      : null,
+                  border: InputBorder.none,
+                  filled: true,
+                  fillColor: AppTheme.backgroundColor,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 6.0),
+                ),
+                onChanged: (value) {
+                  setState(() {});
+                },
+              ),
             ),
-            filled: true,
-            fillColor: AppTheme.backgroundColor,
-          ),
-          onChanged: (value) {
-            setState(() {});
-          },
+          ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildStatsSummary() {
+    return Consumer<AssignmentProvider>(
+      builder: (context, provider, child) {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: AppTheme.spacingXs),
+          child: Card(
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppTheme.radiusXs),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(AppTheme.spacingXs),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _buildStatItem('Total', provider.totalAssignments.toString(), AppTheme.primaryColor),
+                  _buildStatItem('Active', provider.activeAssignments.toString(), AppTheme.successColor),
+                  _buildStatItem('Expiring', provider.expiringAssignments.toString(), AppTheme.warningColor),
+                  _buildStatItem('Expired', provider.expiredAssignments.toString(), AppTheme.errorColor),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildStatItem(String label, String value, Color color) {
+    return Flexible(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            value,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: AppTheme.textSecondary,
+              fontSize: 10,
+            ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildFilterDropdown() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: AppTheme.spacingM),
+      padding: const EdgeInsets.symmetric(horizontal: AppTheme.spacingXs),
       decoration: BoxDecoration(
         border: Border.all(color: AppTheme.borderColor),
-        borderRadius: BorderRadius.circular(AppTheme.radiusM),
+        borderRadius: BorderRadius.circular(AppTheme.radiusXs),
       ),
       child: DropdownButton<String>(
         value: _selectedFilter,
         underline: const SizedBox(),
         items: const [
-          DropdownMenuItem(value: 'all', child: Text('All Assignments')),
-          DropdownMenuItem(value: 'active', child: Text('Active Only')),
-          DropdownMenuItem(value: 'expired', child: Text('Expired Only')),
-          DropdownMenuItem(value: 'expiring', child: Text('Expiring Soon')),
+          DropdownMenuItem(value: 'all', child: Text('All')),
+          DropdownMenuItem(value: 'active', child: Text('Active')),
+          DropdownMenuItem(value: 'expired', child: Text('Expired')),
+          DropdownMenuItem(value: 'expiring', child: Text('Expiring')),
           DropdownMenuItem(value: 'inactive', child: Text('Inactive')),
         ],
         onChanged: (value) {
@@ -270,200 +282,70 @@ class _AssignmentManagementScreenState extends State<AssignmentManagementScreen>
             _selectedFilter = value!;
           });
         },
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+          color: AppTheme.textPrimary,
+          fontSize: 12,
+        ),
+        dropdownColor: AppTheme.cardColor,
+        iconSize: 16,
       ),
     );
   }
 
-  Widget _buildStatsCards(AssignmentProvider provider) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        if (constraints.maxWidth > 800) {
-          return Row(
-            children: [
-              Expanded(
-                child: _buildStatCard(
-                  'Total Assignments',
-                  provider.totalAssignments.toString(),
-                  Icons.assignment,
-                  AppTheme.primaryColor,
-                ),
-              ),
-              const SizedBox(width: AppTheme.spacingM),
-              Expanded(
-                child: _buildStatCard(
-                  'Active',
-                  provider.activeAssignments.toString(),
-                  Icons.check_circle,
-                  AppTheme.successColor,
-                ),
-              ),
-              const SizedBox(width: AppTheme.spacingM),
-              Expanded(
-                child: _buildStatCard(
-                  'Expiring Soon',
-                  provider.expiringAssignments.toString(),
-                  Icons.warning,
-                  AppTheme.warningColor,
-                ),
-              ),
-              const SizedBox(width: AppTheme.spacingM),
-              Expanded(
-                child: _buildStatCard(
-                  'Expired',
-                  provider.expiredAssignments.toString(),
-                  Icons.cancel,
-                  AppTheme.errorColor,
-                ),
-              ),
-            ],
-          );
-        } else {
-          return Column(
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildStatCard(
-                      'Total',
-                      provider.totalAssignments.toString(),
-                      Icons.assignment,
-                      AppTheme.primaryColor,
-                    ),
-                  ),
-                  const SizedBox(width: AppTheme.spacingM),
-                  Expanded(
-                    child: _buildStatCard(
-                      'Active',
-                      provider.activeAssignments.toString(),
-                      Icons.check_circle,
-                      AppTheme.successColor,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppTheme.spacingM),
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildStatCard(
-                      'Expiring',
-                      provider.expiringAssignments.toString(),
-                      Icons.warning,
-                      AppTheme.warningColor,
-                    ),
-                  ),
-                  const SizedBox(width: AppTheme.spacingM),
-                  Expanded(
-                    child: _buildStatCard(
-                      'Expired',
-                      provider.expiredAssignments.toString(),
-                      Icons.cancel,
-                      AppTheme.errorColor,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          );
-        }
-      },
-    );
-  }
+  Widget _buildAssignmentsList() {
+    return Consumer<AssignmentProvider>(
+      builder: (context, provider, child) {
+        List<AssignmentWithDetails> filteredAssignments = _getFilteredAssignments(provider);
 
-  Widget _buildStatCard(String title, String value, IconData icon, Color color) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(AppTheme.spacingL),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+        if (filteredAssignments.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(icon, color: color, size: 24),
-                const SizedBox(width: AppTheme.spacingS),
-                Flexible(
-                  child: Text(
-                    title,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppTheme.textSecondary,
-                    ),
-                    overflow: TextOverflow.ellipsis,
+                Icon(
+                  _selectedFilter == 'all' ? Icons.assignment_outlined : Icons.filter_list_off,
+                  size: 40,
+                  color: AppTheme.textTertiary,
+                ),
+                const SizedBox(height: AppTheme.spacingXs),
+                Text(
+                  _selectedFilter == 'all' 
+                      ? 'No assignments found' 
+                      : 'No matches for filter',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: AppTheme.textSecondary,
                   ),
+                ),
+                const SizedBox(height: AppTheme.spacingXs),
+                CustomButton(
+                  text: _selectedFilter == 'all' ? 'Create Assignment' : 'Show All',
+                  icon: _selectedFilter == 'all' ? Icons.add : Icons.clear_all,
+                  onPressed: _selectedFilter == 'all' 
+                      ? _showCreateAssignmentDialog 
+                      : () {
+                          setState(() {
+                            _selectedFilter = 'all';
+                          });
+                        },
+                  fullWidth: false,
+                  width: 140,
+                  height: 32,
                 ),
               ],
             ),
-            const SizedBox(height: AppTheme.spacingS),
-            Text(
-              value,
-              style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+          );
+        }
 
-  Widget _buildAssignmentsList(AssignmentProvider provider) {
-    List<AssignmentWithDetails> filteredAssignments = _getFilteredAssignments(provider);
-
-    if (filteredAssignments.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              _selectedFilter == 'all' ? Icons.assignment_outlined : Icons.filter_list_off,
-              size: 64,
-              color: AppTheme.textTertiary,
-            ),
-            const SizedBox(height: AppTheme.spacingM),
-            Text(
-              _selectedFilter == 'all' 
-                  ? 'No assignments found' 
-                  : 'No assignments match the current filter',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                color: AppTheme.textSecondary,
-              ),
-            ),
-            const SizedBox(height: AppTheme.spacingS),
-            Text(
-              _selectedFilter == 'all' 
-                  ? 'Create assignments to link students with email accounts' 
-                  : 'Try selecting a different filter',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: AppTheme.textTertiary,
-              ),
-            ),
-            const SizedBox(height: AppTheme.spacingL),
-            CustomButton(
-              text: _selectedFilter == 'all' ? 'Create First Assignment' : 'Show All',
-              icon: _selectedFilter == 'all' ? Icons.assignment_add : Icons.clear_all,
-              onPressed: _selectedFilter == 'all' 
-                  ? _showCreateAssignmentDialog 
-                  : () {
-                      setState(() {
-                        _selectedFilter = 'all';
-                      });
-                    },
-              fullWidth: false,
-              width: 180,
-            ),
-          ],
-        ),
-      );
-    }
-
-    return ListView.builder(
-      itemCount: filteredAssignments.length,
-      itemBuilder: (context, index) {
-        final assignmentDetail = filteredAssignments[index];
-        return _ImprovedAssignmentCard(
-          key: ValueKey(assignmentDetail.assignment.id),
-          assignmentDetail: assignmentDetail,
-          onActionSelected: _handleAssignmentAction,
+        return ListView.builder(
+          itemCount: filteredAssignments.length,
+          itemBuilder: (context, index) {
+            final assignmentDetail = filteredAssignments[index];
+            return _ImprovedAssignmentCard(
+              key: ValueKey(assignmentDetail.assignment.id),
+              assignmentDetail: assignmentDetail,
+              onActionSelected: _handleAssignmentAction,
+            );
+          },
         );
       },
     );
@@ -501,7 +383,6 @@ class _AssignmentManagementScreenState extends State<AssignmentManagementScreen>
     return assignments;
   }
 
-  // IMPROVED CREATE ASSIGNMENT DIALOG WITH BETTER UI
   void _showCreateAssignmentDialog() {
     showDialog(
       context: context,
@@ -524,7 +405,6 @@ class _AssignmentManagementScreenState extends State<AssignmentManagementScreen>
     );
   }
 
-  // Other methods remain the same...
   void _handleAssignmentAction(String action, AssignmentWithDetails assignmentDetail) {
     switch (action) {
       case 'toggle':
@@ -581,41 +461,41 @@ class _AssignmentManagementScreenState extends State<AssignmentManagementScreen>
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'Extend assignment for ${assignmentDetail.student.name}',
+                  'Extend for ${assignmentDetail.student.name}',
                   style: Theme.of(context).textTheme.bodyLarge,
                 ),
-                const SizedBox(height: AppTheme.spacingL),
+                const SizedBox(height: AppTheme.spacingS),
                 FormBuilderDropdown<int>(
                   name: 'additionalDays',
                   decoration: const InputDecoration(
-                    labelText: 'Extend by',
+                    labelText: 'Days',
                     prefixIcon: Icon(Icons.schedule),
                   ),
                   validator: FormBuilderValidators.required(),
                   items: const [
-                    DropdownMenuItem(value: 7, child: Text('7 days')),
-                    DropdownMenuItem(value: 14, child: Text('14 days')),
-                    DropdownMenuItem(value: 30, child: Text('30 days')),
-                    DropdownMenuItem(value: 60, child: Text('60 days')),
-                    DropdownMenuItem(value: 90, child: Text('90 days')),
+                    DropdownMenuItem(value: 7, child: Text('7')),
+                    DropdownMenuItem(value: 14, child: Text('14')),
+                    DropdownMenuItem(value: 30, child: Text('30')),
+                    DropdownMenuItem(value: 60, child: Text('60')),
+                    DropdownMenuItem(value: 90, child: Text('90')),
                   ],
                 ),
-                const SizedBox(height: AppTheme.spacingM),
+                const SizedBox(height: AppTheme.spacingS),
                 Container(
-                  padding: const EdgeInsets.all(AppTheme.spacingM),
+                  padding: const EdgeInsets.all(AppTheme.spacingXs),
                   decoration: BoxDecoration(
                     color: AppTheme.backgroundColor,
-                    borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                    borderRadius: BorderRadius.circular(AppTheme.radiusS),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Current expiry: ${DateFormat('MMM dd, yyyy').format(assignmentDetail.assignment.expiryDate)}',
+                        'Expires: ${DateFormat('MMM dd, yyyy').format(assignmentDetail.assignment.expiryDate)}',
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
                       Text(
-                        'Days remaining: ${assignmentDetail.assignment.daysRemaining}',
+                        'Days Left: ${assignmentDetail.assignment.daysRemaining}',
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
                     ],
@@ -634,7 +514,8 @@ class _AssignmentManagementScreenState extends State<AssignmentManagementScreen>
             text: 'Extend',
             onPressed: () => _handleExtendAssignment(formKey, assignmentDetail),
             fullWidth: false,
-            width: 100,
+            width: 80,
+            height: 32,
           ),
         ],
       ),
@@ -657,7 +538,7 @@ class _AssignmentManagementScreenState extends State<AssignmentManagementScreen>
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('✅ Assignment extended by $additionalDays days!'),
+              content: Text('✅ Extended by $additionalDays days!'),
               backgroundColor: AppTheme.successColor,
             ),
           );
@@ -666,7 +547,7 @@ class _AssignmentManagementScreenState extends State<AssignmentManagementScreen>
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('❌ Failed to extend assignment: $e'),
+              content: Text('❌ Failed to extend: $e'),
               backgroundColor: AppTheme.errorColor,
             ),
           );
@@ -678,19 +559,19 @@ class _AssignmentManagementScreenState extends State<AssignmentManagementScreen>
   void _showDeleteConfirmDialog(AssignmentWithDetails assignmentDetail) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Delete Assignment'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Are you sure you want to delete this assignment?'),
-            const SizedBox(height: AppTheme.spacingM),
+            const Text('Confirm deletion?'),
+            const SizedBox(height: AppTheme.spacingXs),
             Container(
-              padding: const EdgeInsets.all(AppTheme.spacingM),
+              padding: const EdgeInsets.all(AppTheme.spacingXs),
               decoration: BoxDecoration(
                 color: AppTheme.backgroundColor,
-                borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                borderRadius: BorderRadius.circular(AppTheme.radiusS),
                 border: Border.all(color: AppTheme.borderColor),
               ),
               child: Column(
@@ -707,54 +588,28 @@ class _AssignmentManagementScreenState extends State<AssignmentManagementScreen>
                 ],
               ),
             ),
-            const SizedBox(height: AppTheme.spacingM),
-            Container(
-              padding: const EdgeInsets.all(AppTheme.spacingS),
-              decoration: BoxDecoration(
-                color: AppTheme.errorColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(AppTheme.radiusS),
-              ),
-              child: const Row(
-                children: [
-                  Icon(
-                    Icons.warning,
-                    color: AppTheme.errorColor,
-                    size: 16,
-                  ),
-                  SizedBox(width: AppTheme.spacingS),
-                  Expanded(
-                    child: Text(
-                      'This will free up the email for reassignment',
-                      style: TextStyle(
-                        color: AppTheme.errorColor,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
           ],
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => Navigator.of(dialogContext).pop(),
             child: const Text('Cancel'),
           ),
           CustomButton(
             text: 'Delete',
             style: CustomButtonStyle.danger,
-            onPressed: () => _handleDeleteAssignment(assignmentDetail),
+            onPressed: () => _handleDeleteAssignment(dialogContext, assignmentDetail),
             fullWidth: false,
-            width: 80,
+            width: 70,
+            height: 32,
           ),
         ],
       ),
     );
   }
 
-  void _handleDeleteAssignment(AssignmentWithDetails assignmentDetail) async {
-    Navigator.of(context).pop();
+  Future<void> _handleDeleteAssignment(BuildContext dialogContext, AssignmentWithDetails assignmentDetail) async {
+    Navigator.of(dialogContext).pop();
     
     try {
       await Provider.of<AssignmentProvider>(context, listen: false)
@@ -763,7 +618,7 @@ class _AssignmentManagementScreenState extends State<AssignmentManagementScreen>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('🗑️ Assignment deleted successfully!'),
+            content: Text('🗑️ Deleted!'),
             backgroundColor: AppTheme.successColor,
           ),
         );
@@ -772,7 +627,7 @@ class _AssignmentManagementScreenState extends State<AssignmentManagementScreen>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('❌ Failed to delete assignment: $e'),
+            content: Text('❌ Failed: $e'),
             backgroundColor: AppTheme.errorColor,
           ),
         );
@@ -788,7 +643,7 @@ class _AssignmentManagementScreenState extends State<AssignmentManagementScreen>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('✅ Expired assignments processed!'),
+            content: Text('✅ Processed!'),
             backgroundColor: AppTheme.successColor,
           ),
         );
@@ -797,7 +652,7 @@ class _AssignmentManagementScreenState extends State<AssignmentManagementScreen>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('❌ Failed to process expired assignments: $e'),
+            content: Text('❌ Failed: $e'),
             backgroundColor: AppTheme.errorColor,
           ),
         );
@@ -806,7 +661,6 @@ class _AssignmentManagementScreenState extends State<AssignmentManagementScreen>
   }
 }
 
-// IMPROVED CREATE ASSIGNMENT DIALOG
 class ImprovedCreateAssignmentDialog extends StatefulWidget {
   const ImprovedCreateAssignmentDialog({Key? key}) : super(key: key);
 
@@ -834,9 +688,8 @@ class _ImprovedCreateAssignmentDialogState extends State<ImprovedCreateAssignmen
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Header
         Container(
-          padding: const EdgeInsets.all(AppTheme.spacingL),
+          padding: const EdgeInsets.all(AppTheme.spacingM),
           decoration: const BoxDecoration(
             color: AppTheme.primaryColor,
             borderRadius: BorderRadius.only(
@@ -846,14 +699,14 @@ class _ImprovedCreateAssignmentDialogState extends State<ImprovedCreateAssignmen
           ),
           child: Row(
             children: [
-              const Icon(Icons.assignment_add, color: Colors.white, size: 28),
-              const SizedBox(width: AppTheme.spacingM),
+              const Icon(Icons.add, color: Colors.white, size: 24),
+              const SizedBox(width: AppTheme.spacingS),
               const Expanded(
                 child: Text(
-                  'Create New Assignment',
+                  'New Assignment',
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 20,
+                    fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -865,45 +718,31 @@ class _ImprovedCreateAssignmentDialogState extends State<ImprovedCreateAssignmen
             ],
           ),
         ),
-
-        // Content
         Flexible(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(AppTheme.spacingL),
+            padding: const EdgeInsets.all(AppTheme.spacingM),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Student Selection
-                _buildSectionTitle('Select Student'),
-                const SizedBox(height: AppTheme.spacingS),
+                _buildSectionTitle('Student'),
+                const SizedBox(height: AppTheme.spacingXs),
                 _buildStudentSelector(),
-                
-                const SizedBox(height: AppTheme.spacingXl),
-                
-                // Email Selection
-                _buildSectionTitle('Select Email'),
-                const SizedBox(height: AppTheme.spacingS),
+                const SizedBox(height: AppTheme.spacingM),
+                _buildSectionTitle('Email'),
+                const SizedBox(height: AppTheme.spacingXs),
                 _buildEmailSelector(),
-                
-                const SizedBox(height: AppTheme.spacingXl),
-                
-                // Optional Date
-                _buildSectionTitle('Assignment Date (Optional)'),
-                const SizedBox(height: AppTheme.spacingS),
+                const SizedBox(height: AppTheme.spacingM),
+                _buildSectionTitle('Date (Optional)'),
+                const SizedBox(height: AppTheme.spacingXs),
                 _buildDateSelector(),
-                
-                const SizedBox(height: AppTheme.spacingL),
-                
-                // Info Box
+                const SizedBox(height: AppTheme.spacingS),
                 _buildInfoBox(),
               ],
             ),
           ),
         ),
-
-        // Footer Actions
         Container(
-          padding: const EdgeInsets.all(AppTheme.spacingL),
+          padding: const EdgeInsets.all(AppTheme.spacingM),
           decoration: const BoxDecoration(
             color: AppTheme.backgroundColor,
             borderRadius: BorderRadius.only(
@@ -918,14 +757,15 @@ class _ImprovedCreateAssignmentDialogState extends State<ImprovedCreateAssignmen
                 onPressed: _isCreating ? null : () => Navigator.of(context).pop(),
                 child: const Text('Cancel'),
               ),
-              const SizedBox(width: AppTheme.spacingM),
+              const SizedBox(width: AppTheme.spacingS),
               CustomButton(
-                text: _isCreating ? 'Creating...' : 'Create Assignment',
+                text: _isCreating ? 'Creating...' : 'Create',
                 onPressed: _isCreating || _selectedStudent == null || _selectedEmail == null 
                     ? null 
                     : _handleCreateAssignment,
                 fullWidth: false,
-                width: 160,
+                width: 100,
+                height: 32,
               ),
             ],
           ),
@@ -937,7 +777,7 @@ class _ImprovedCreateAssignmentDialogState extends State<ImprovedCreateAssignmen
   Widget _buildSectionTitle(String title) {
     return Text(
       title,
-      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+      style: Theme.of(context).textTheme.titleSmall?.copyWith(
         fontWeight: FontWeight.bold,
       ),
     );
@@ -953,84 +793,70 @@ class _ImprovedCreateAssignmentDialogState extends State<ImprovedCreateAssignmen
         if (availableStudents.isEmpty) {
           return _buildEmptyState(
             icon: Icons.person_off,
-            title: 'No Active Students',
-            subtitle: 'Please add active students first',
+            title: 'No Students',
+            subtitle: 'Add active students first',
           );
         }
 
         return Column(
           children: [
-            // Search Field
             TextField(
               controller: _studentSearchController,
               decoration: InputDecoration(
-                hintText: 'Search students by name or WhatsApp...',
-                prefixIcon: const Icon(Icons.search),
+                hintText: 'Search...',
+                prefixIcon: const Icon(Icons.search, size: 18),
                 suffixIcon: _studentSearchController.text.isNotEmpty
                     ? IconButton(
                         onPressed: () {
                           _studentSearchController.clear();
                           setState(() {});
                         },
-                        icon: const Icon(Icons.clear),
+                        icon: const Icon(Icons.clear, size: 18),
                       )
                     : null,
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusS),
                 ),
               ),
               onChanged: (value) => setState(() {}),
             ),
-            
-            const SizedBox(height: AppTheme.spacingM),
-            
-            // Selected Student Display
+            const SizedBox(height: AppTheme.spacingXs),
             if (_selectedStudent != null)
               Container(
-                padding: const EdgeInsets.all(AppTheme.spacingM),
+                padding: const EdgeInsets.all(AppTheme.spacingXs),
                 decoration: BoxDecoration(
                   color: AppTheme.successColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusS),
                   border: Border.all(color: AppTheme.successColor),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.check_circle, color: AppTheme.successColor),
-                    const SizedBox(width: AppTheme.spacingM),
+                    const Icon(Icons.check, color: AppTheme.successColor, size: 16),
+                    const SizedBox(width: AppTheme.spacingXs),
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _selectedStudent!.name,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: AppTheme.successColor,
-                            ),
-                          ),
-                          Text(
-                            _selectedStudent!.whatsappNumber,
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: AppTheme.successColor,
-                            ),
-                          ),
-                        ],
+                      child: Text(
+                        _selectedStudent!.name,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.successColor,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     IconButton(
                       onPressed: () => setState(() => _selectedStudent = null),
-                      icon: const Icon(Icons.close, color: AppTheme.successColor),
+                      icon: const Icon(Icons.close, color: AppTheme.successColor, size: 16),
                     ),
                   ],
                 ),
               )
             else
-              // Student List
               Container(
-                height: 200,
+                height: 120,
                 decoration: BoxDecoration(
                   border: Border.all(color: AppTheme.borderColor),
-                  borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusS),
                 ),
                 child: _buildStudentList(availableStudents),
               ),
@@ -1051,7 +877,7 @@ class _ImprovedCreateAssignmentDialogState extends State<ImprovedCreateAssignmen
 
     if (filteredStudents.isEmpty) {
       return const Center(
-        child: Text('No students match your search'),
+        child: Text('No matches', style: TextStyle(fontSize: 12)),
       );
     }
 
@@ -1061,21 +887,21 @@ class _ImprovedCreateAssignmentDialogState extends State<ImprovedCreateAssignmen
         final student = filteredStudents[index];
         return ListTile(
           leading: CircleAvatar(
+            radius: 16,
             backgroundColor: AppTheme.primaryColor,
             child: Text(
               student.name.isNotEmpty ? student.name[0].toUpperCase() : 'U',
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              style: const TextStyle(color: Colors.white, fontSize: 12),
             ),
           ),
           title: Text(
             student.name,
-            style: const TextStyle(fontWeight: FontWeight.w600),
+            style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
-          subtitle: Text(student.whatsappNumber),
           onTap: () => setState(() => _selectedStudent = student),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppTheme.radiusS),
-          ),
+          contentPadding: const EdgeInsets.all(AppTheme.spacingXs),
         );
       },
     );
@@ -1084,78 +910,76 @@ class _ImprovedCreateAssignmentDialogState extends State<ImprovedCreateAssignmen
   Widget _buildEmailSelector() {
     return Consumer<EmailPoolProvider>(
       builder: (context, emailProvider, child) {
-        final availableEmails = emailProvider.emailPool.toList(); // FIXED: All emails available
+        final availableEmails = emailProvider.emailPool.toList();
 
         if (availableEmails.isEmpty) {
           return _buildEmptyState(
             icon: Icons.email_outlined,
-            title: 'No Emails Found',
-            subtitle: 'Please add emails to the pool first',
+            title: 'No Emails',
+            subtitle: 'Add emails first',
           );
         }
 
         return Column(
           children: [
-            // Search Field
             TextField(
               controller: _emailSearchController,
               decoration: InputDecoration(
-                hintText: 'Search emails...',
-                prefixIcon: const Icon(Icons.search),
+                hintText: 'Search...',
+                prefixIcon: const Icon(Icons.search, size: 18),
                 suffixIcon: _emailSearchController.text.isNotEmpty
                     ? IconButton(
                         onPressed: () {
                           _emailSearchController.clear();
                           setState(() {});
                         },
-                        icon: const Icon(Icons.clear),
+                        icon: const Icon(Icons.clear, size: 18),
                       )
                     : null,
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusS),
                 ),
               ),
               onChanged: (value) => setState(() {}),
             ),
-            
-            const SizedBox(height: AppTheme.spacingM),
-            
-            // Selected Email Display
+            const SizedBox(height: AppTheme.spacingXs),
             if (_selectedEmail != null)
               Container(
-                padding: const EdgeInsets.all(AppTheme.spacingM),
+                padding: const EdgeInsets.all(AppTheme.spacingXs),
                 decoration: BoxDecoration(
                   color: AppTheme.successColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusS),
                   border: Border.all(color: AppTheme.successColor),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.check_circle, color: AppTheme.successColor),
-                    const SizedBox(width: AppTheme.spacingM),
+                    const Icon(Icons.check, color: AppTheme.successColor, size: 16),
+                    const SizedBox(width: AppTheme.spacingXs),
                     Expanded(
                       child: Text(
                         _selectedEmail!.email,
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           color: AppTheme.successColor,
+                          fontSize: 14,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     IconButton(
                       onPressed: () => setState(() => _selectedEmail = null),
-                      icon: const Icon(Icons.close, color: AppTheme.successColor),
+                      icon: const Icon(Icons.close, color: AppTheme.successColor, size: 16),
                     ),
                   ],
                 ),
               )
             else
-              // Email List
               Container(
-                height: 150,
+                height: 100,
                 decoration: BoxDecoration(
                   border: Border.all(color: AppTheme.borderColor),
-                  borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusS),
                 ),
                 child: _buildEmailList(availableEmails),
               ),
@@ -1173,7 +997,7 @@ class _ImprovedCreateAssignmentDialogState extends State<ImprovedCreateAssignmen
 
     if (filteredEmails.isEmpty) {
       return const Center(
-        child: Text('No emails match your search'),
+        child: Text('No matches', style: TextStyle(fontSize: 12)),
       );
     }
 
@@ -1183,17 +1007,18 @@ class _ImprovedCreateAssignmentDialogState extends State<ImprovedCreateAssignmen
         final email = filteredEmails[index];
         return ListTile(
           leading: const CircleAvatar(
+            radius: 16,
             backgroundColor: AppTheme.primaryColor,
-            child: Icon(Icons.email, color: Colors.white),
+            child: Icon(Icons.email, color: Colors.white, size: 12),
           ),
           title: Text(
             email.email,
-            style: const TextStyle(fontWeight: FontWeight.w600),
+            style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
           onTap: () => setState(() => _selectedEmail = email),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppTheme.radiusS),
-          ),
+          contentPadding: const EdgeInsets.all(AppTheme.spacingXs),
         );
       },
     );
@@ -1203,15 +1028,15 @@ class _ImprovedCreateAssignmentDialogState extends State<ImprovedCreateAssignmen
     return InkWell(
       onTap: _selectDate,
       child: Container(
-        padding: const EdgeInsets.all(AppTheme.spacingM),
+        padding: const EdgeInsets.all(AppTheme.spacingXs),
         decoration: BoxDecoration(
           border: Border.all(color: AppTheme.borderColor),
-          borderRadius: BorderRadius.circular(AppTheme.radiusM),
+          borderRadius: BorderRadius.circular(AppTheme.radiusS),
         ),
         child: Row(
           children: [
-            const Icon(Icons.calendar_today),
-            const SizedBox(width: AppTheme.spacingM),
+            const Icon(Icons.calendar_today, size: 16),
+            const SizedBox(width: AppTheme.spacingXs),
             Expanded(
               child: Text(
                 _selectedDate != null
@@ -1219,13 +1044,16 @@ class _ImprovedCreateAssignmentDialogState extends State<ImprovedCreateAssignmen
                     : 'Use current date (${DateFormat('MMM dd, yyyy').format(DateTime.now())})',
                 style: TextStyle(
                   color: _selectedDate != null ? null : AppTheme.textSecondary,
+                  fontSize: 12,
                 ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
             if (_selectedDate != null)
               IconButton(
                 onPressed: () => setState(() => _selectedDate = null),
-                icon: const Icon(Icons.clear),
+                icon: const Icon(Icons.clear, size: 16),
               ),
           ],
         ),
@@ -1235,40 +1063,28 @@ class _ImprovedCreateAssignmentDialogState extends State<ImprovedCreateAssignmen
 
   Widget _buildInfoBox() {
     return Container(
-      padding: const EdgeInsets.all(AppTheme.spacingM),
+      padding: const EdgeInsets.all(AppTheme.spacingXs),
       decoration: BoxDecoration(
         color: AppTheme.primaryColor.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(AppTheme.radiusM),
+        borderRadius: BorderRadius.circular(AppTheme.radiusS),
       ),
       child: Row(
         children: [
           const Icon(
             Icons.info_outline,
             color: AppTheme.primaryColor,
-            size: 24,
+            size: 16,
           ),
-          const SizedBox(width: AppTheme.spacingM),
+          const SizedBox(width: AppTheme.spacingXs),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Assignment Details',
-                  style: TextStyle(
-                    color: AppTheme.primaryColor,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: AppTheme.spacingXs),
-                Text(
-                  '• Assignment will expire 30 days from the assignment date\n'
-                  '• Email will be marked as unavailable for other assignments\n'
-                  '• You can extend or deactivate assignments later',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppTheme.primaryColor,
-                  ),
-                ),
-              ],
+            child: Text(
+              'Expires in 30 days, email unavailable, extendable later',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: AppTheme.primaryColor,
+                fontSize: 12,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],
@@ -1282,22 +1098,24 @@ class _ImprovedCreateAssignmentDialogState extends State<ImprovedCreateAssignmen
     required String subtitle,
   }) {
     return Container(
-      padding: const EdgeInsets.all(AppTheme.spacingXl),
+      padding: const EdgeInsets.all(AppTheme.spacingS),
       child: Column(
         children: [
-          Icon(icon, size: 48, color: AppTheme.textTertiary),
-          const SizedBox(height: AppTheme.spacingM),
+          Icon(icon, size: 32, color: AppTheme.textTertiary),
+          const SizedBox(height: AppTheme.spacingXs),
           Text(
             title,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
               color: AppTheme.textSecondary,
+              fontSize: 12,
             ),
           ),
-          const SizedBox(height: AppTheme.spacingS),
+          const SizedBox(height: AppTheme.spacingXs),
           Text(
             subtitle,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
               color: AppTheme.textTertiary,
+              fontSize: 10,
             ),
             textAlign: TextAlign.center,
           ),
@@ -1336,7 +1154,7 @@ class _ImprovedCreateAssignmentDialogState extends State<ImprovedCreateAssignmen
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('✅ Assignment created successfully!'),
+            content: Text('✅ Created!'),
             backgroundColor: AppTheme.successColor,
           ),
         );
@@ -1345,7 +1163,7 @@ class _ImprovedCreateAssignmentDialogState extends State<ImprovedCreateAssignmen
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('❌ Failed to create assignment: $e'),
+            content: Text('❌ Failed: $e'),
             backgroundColor: AppTheme.errorColor,
           ),
         );
@@ -1358,7 +1176,6 @@ class _ImprovedCreateAssignmentDialogState extends State<ImprovedCreateAssignmen
   }
 }
 
-// IMPROVED ASSIGNMENT CARD WITH BETTER LAYOUT
 class _ImprovedAssignmentCard extends StatelessWidget {
   final AssignmentWithDetails assignmentDetail;
   final Function(String, AssignmentWithDetails) onActionSelected;
@@ -1389,7 +1206,7 @@ class _ImprovedAssignmentCard extends StatelessWidget {
       statusIcon = Icons.pause_circle;
     } else if (assignment.daysRemaining <= 7) {
       statusColor = AppTheme.warningColor;
-      statusText = 'EXPIRING SOON';
+      statusText = 'EXPIRING';
       statusIcon = Icons.warning;
     } else {
       statusColor = AppTheme.successColor;
@@ -1398,246 +1215,165 @@ class _ImprovedAssignmentCard extends StatelessWidget {
     }
 
     return Card(
-      margin: const EdgeInsets.only(bottom: AppTheme.spacingM),
-      elevation: 2,
+      margin: const EdgeInsets.only(bottom: AppTheme.spacingXs),
+      elevation: 1,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppTheme.radiusXs),
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(AppTheme.spacingL),
-        child: Column(
+        padding: const EdgeInsets.all(AppTheme.spacingXs),
+        child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header Row with better spacing
-            Row(
-              children: [
-                Container(
-                  width: 50,
-                  height: 50,
-                  decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(25),
-                  ),
-                  child: Icon(statusIcon, color: statusColor, size: 24),
-                ),
-                const SizedBox(width: AppTheme.spacingM),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: statusColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Icon(statusIcon, color: statusColor, size: 20),
+            ),
+            const SizedBox(width: AppTheme.spacingXs),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        student.name,
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
+                      Expanded(
+                        child: Text(
+                          student.name,
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      const SizedBox(height: AppTheme.spacingXs),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppTheme.spacingXs,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: statusColor.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(AppTheme.radiusXs),
+                        ),
+                        child: Text(
+                          statusText,
+                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            color: statusColor,
+                            fontSize: 10,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppTheme.spacingXs),
+                  Row(
+                    children: [
+                      Icon(Icons.phone, size: 14, color: AppTheme.textSecondary),
+                      const SizedBox(width: AppTheme.spacingXs),
+                      Text(
+                        student.whatsappNumber,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppTheme.textSecondary,
+                          fontSize: 12,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppTheme.spacingXs),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Row(
+                          children: [
+                            Icon(Icons.email, size: 14, color: AppTheme.primaryColor),
+                            const SizedBox(width: AppTheme.spacingXs),
+                            Text(
+                              email.email,
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                fontWeight: FontWeight.w500,
+                                fontSize: 12,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
                       Row(
                         children: [
-                          Icon(Icons.phone, size: 14, color: AppTheme.textSecondary),
-                          const SizedBox(width: AppTheme.spacingXs),
                           Text(
-                            student.whatsappNumber,
+                            DateFormat('MMM dd').format(assignment.dateAssigned),
                             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: AppTheme.textSecondary,
+                              fontSize: 12,
+                            ),
+                          ),
+                          const Text(' - '),
+                          Text(
+                            DateFormat('MMM dd').format(assignment.expiryDate),
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              fontSize: 12,
+                              color: assignment.isExpired ? AppTheme.errorColor : null,
                             ),
                           ),
                         ],
                       ),
                     ],
                   ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppTheme.spacingM,
-                    vertical: AppTheme.spacingS,
-                  ),
-                  decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(AppTheme.radiusL),
-                  ),
-                  child: Text(
-                    statusText,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: statusColor,
-                      fontWeight: FontWeight.bold,
+                ],
+              ),
+            ),
+            Column(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    IconButton(
+                      icon: Icon(assignment.isActive ? Icons.pause : Icons.play_arrow),
+                      onPressed: () => onActionSelected('toggle', assignmentDetail),
+                      tooltip: assignment.isActive ? 'Deactivate' : 'Activate',
+                      iconSize: 18,
+                      padding: EdgeInsets.zero,
                     ),
-                  ),
-                ),
-                const SizedBox(width: AppTheme.spacingS),
-                PopupMenuButton<String>(
-                  onSelected: (value) => onActionSelected(value, assignmentDetail),
-                  itemBuilder: (context) => [
-                    PopupMenuItem(
-                      value: 'toggle',
-                      child: Row(
-                        children: [
-                          Icon(assignment.isActive ? Icons.pause : Icons.play_arrow, size: 18),
-                          const SizedBox(width: AppTheme.spacingS),
-                          Text(assignment.isActive ? 'Deactivate' : 'Activate'),
-                        ],
-                      ),
+                    IconButton(
+                      icon: const Icon(Icons.schedule),
+                      onPressed: () => onActionSelected('extend', assignmentDetail),
+                      tooltip: 'Extend',
+                      iconSize: 18,
+                      padding: EdgeInsets.zero,
                     ),
-                    const PopupMenuItem(
-                      value: 'extend',
-                      child: Row(
-                        children: [
-                          Icon(Icons.schedule, size: 18),
-                          SizedBox(width: AppTheme.spacingS),
-                          Text('Extend'),
-                        ],
-                      ),
-                    ),
-                    const PopupMenuItem(
-                      value: 'delete',
-                      child: Row(
-                        children: [
-                          Icon(Icons.delete, size: 18, color: AppTheme.errorColor),
-                          SizedBox(width: AppTheme.spacingS),
-                          Text('Delete', style: TextStyle(color: AppTheme.errorColor)),
-                        ],
-                      ),
+                    IconButton(
+                      icon: const Icon(Icons.delete, color: AppTheme.errorColor),
+                      onPressed: () => onActionSelected('delete', assignmentDetail),
+                      tooltip: 'Delete',
+                      iconSize: 18,
+                      padding: EdgeInsets.zero,
                     ),
                   ],
                 ),
+                const SizedBox(height: AppTheme.spacingXs),
+                Text(
+                  assignment.isExpired ? 'Expired' : '${assignment.daysRemaining}d',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: assignment.isExpired 
+                        ? AppTheme.errorColor
+                        : assignment.daysRemaining <= 7
+                            ? AppTheme.warningColor
+                            : AppTheme.successColor,
+                    fontSize: 12,
+                  ),
+                ),
               ],
-            ),
-            
-            const SizedBox(height: AppTheme.spacingL),
-            
-            // Email and Date Info in a better layout
-            Container(
-              padding: const EdgeInsets.all(AppTheme.spacingM),
-              decoration: BoxDecoration(
-                color: AppTheme.backgroundColor,
-                borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                border: Border.all(color: AppTheme.borderColor),
-              ),
-              child: Column(
-                children: [
-                  // Email Row
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(AppTheme.spacingS),
-                        decoration: BoxDecoration(
-                          color: AppTheme.primaryColor.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(AppTheme.radiusS),
-                        ),
-                        child: const Icon(
-                          Icons.email, 
-                          size: 16, 
-                          color: AppTheme.primaryColor,
-                        ),
-                      ),
-                      const SizedBox(width: AppTheme.spacingM),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Assigned Email',
-                              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                color: AppTheme.textSecondary,
-                              ),
-                            ),
-                            Text(
-                              email.email,
-                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  
-                  const SizedBox(height: AppTheme.spacingM),
-                  
-                  // Date Information Row
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Assigned Date',
-                              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                color: AppTheme.textSecondary,
-                              ),
-                            ),
-                            Text(
-                              DateFormat('MMM dd, yyyy').format(assignment.dateAssigned),
-                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Expiry Date',
-                              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                color: AppTheme.textSecondary,
-                              ),
-                            ),
-                            Text(
-                              DateFormat('MMM dd, yyyy').format(assignment.expiryDate),
-                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                fontWeight: FontWeight.w500,
-                                color: assignment.isExpired ? AppTheme.errorColor : null,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AppTheme.spacingM,
-                          vertical: AppTheme.spacingS,
-                        ),
-                        decoration: BoxDecoration(
-                          color: assignment.isExpired 
-                              ? AppTheme.errorColor.withOpacity(0.1)
-                              : assignment.daysRemaining <= 7
-                                  ? AppTheme.warningColor.withOpacity(0.1)
-                                  : AppTheme.successColor.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                        ),
-                        child: Column(
-                          children: [
-                            Text(
-                              assignment.isExpired 
-                                  ? 'EXPIRED'
-                                  : '${assignment.daysRemaining}',
-                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: assignment.isExpired 
-                                    ? AppTheme.errorColor
-                                    : assignment.daysRemaining <= 7
-                                        ? AppTheme.warningColor
-                                        : AppTheme.successColor,
-                              ),
-                            ),
-                            if (!assignment.isExpired)
-                              Text(
-                                'days left',
-                                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                  color: assignment.daysRemaining <= 7
-                                      ? AppTheme.warningColor
-                                      : AppTheme.successColor,
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
             ),
           ],
         ),

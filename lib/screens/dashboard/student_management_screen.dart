@@ -38,97 +38,56 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Student Management'),
+        title: const Text('Students'),
+        titleTextStyle: Theme.of(context).textTheme.titleLarge?.copyWith(
+          fontWeight: FontWeight.bold,
+        ),
+        toolbarHeight: 48,
         actions: [
           Padding(
-            padding: const EdgeInsets.all(8.0),
+            padding: const EdgeInsets.all(2.0),
             child: CustomButton(
-              text: 'Add Student',
+              text: 'Add',
               icon: Icons.person_add,
               onPressed: _showAddStudentDialog,
               fullWidth: false,
-              width: 130,
+              width: 70,
+              height: 32,
             ),
           ),
         ],
       ),
-      body: Consumer<StudentProvider>(
-        builder: (context, studentProvider, child) {
-          if (studentProvider.isLoading) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          if (studentProvider.error != null) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(
-                    Icons.error_outline,
-                    size: 64,
-                    color: AppTheme.errorColor,
-                  ),
-                  const SizedBox(height: AppTheme.spacingM),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: AppTheme.spacingL),
-                    child: Text(
-                      'Error: ${studentProvider.error}',
-                      style: Theme.of(context).textTheme.bodyLarge,
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                  const SizedBox(height: AppTheme.spacingL),
-                  CustomButton(
-                    text: 'Retry',
-                    onPressed: () => studentProvider.fetchStudents(),
-                    fullWidth: false,
-                    width: 100,
-                  ),
-                ],
-              ),
-            );
-          }
-
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final padding = constraints.maxWidth > 600 ? AppTheme.spacingS : AppTheme.spacingXs;
           return Padding(
-            padding: const EdgeInsets.all(AppTheme.spacingL),
+            padding: EdgeInsets.all(padding),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Search Bar
                 _buildSearchBar(),
-                
-                const SizedBox(height: AppTheme.spacingL),
-                
-                // Stats (simplified - no active/inactive distinction)
-                _buildStatsCards(studentProvider),
-                
-                const SizedBox(height: AppTheme.spacingXl),
-                
-                // Students List
+                const SizedBox(height: AppTheme.spacingXs),
                 Expanded(
+                  flex: 1,
                   child: Card(
+                    elevation: 1,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppTheme.radiusXs),
+                    ),
                     child: Padding(
-                      padding: const EdgeInsets.all(AppTheme.spacingL),
+                      padding: const EdgeInsets.all(AppTheme.spacingXs),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Students Directory',
-                            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                              fontWeight: FontWeight.w600,
+                            'Students',
+                            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
-                          const SizedBox(height: AppTheme.spacingM),
-                          Text(
-                            'Manage student records and their information',
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: AppTheme.textSecondary,
-                            ),
-                          ),
-                          const SizedBox(height: AppTheme.spacingL),
-                          
+                          const SizedBox(height: AppTheme.spacingXs),
                           Expanded(
-                            child: _buildStudentsList(studentProvider.students),
+                            child: _buildStudentsList(),
                           ),
                         ],
                       ),
@@ -145,121 +104,125 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
 
   Widget _buildSearchBar() {
     return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppTheme.radiusXs),
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(AppTheme.spacingM),
+        padding: const EdgeInsets.all(AppTheme.spacingXs),
         child: TextField(
           controller: _searchController,
           decoration: InputDecoration(
-            hintText: 'Search students by name or WhatsApp number...',
-            prefixIcon: const Icon(Icons.search),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppTheme.radiusM),
-              borderSide: BorderSide.none,
-            ),
+            hintText: 'Search...',
+            prefixIcon: const Icon(Icons.search, size: 18),
+            suffixIcon: _searchController.text.isNotEmpty
+                ? IconButton(
+                    onPressed: () {
+                      _searchController.clear();
+                      setState(() {});
+                    },
+                    icon: const Icon(Icons.clear, size: 18),
+                  )
+                : null,
+            border: InputBorder.none,
             filled: true,
             fillColor: AppTheme.backgroundColor,
+            contentPadding: const EdgeInsets.symmetric(vertical: 6.0),
           ),
           onChanged: (value) {
-            setState(() {
-              // Trigger rebuild to filter students
-            });
+            setState(() {});
           },
         ),
       ),
     );
   }
 
-  // SIMPLIFIED: Only show total students count
-  Widget _buildStatsCards(StudentProvider provider) {
-    final totalStudents = provider.students.length;
-    
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(AppTheme.spacingL),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+  Widget _buildStudentsList() {
+    return Consumer<StudentProvider>(
+      builder: (context, studentProvider, child) {
+        if (studentProvider.isLoading) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (studentProvider.error != null) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.people, color: AppTheme.primaryColor, size: 24),
-                const SizedBox(width: AppTheme.spacingS),
-                Text(
-                  'Total Students',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppTheme.textSecondary,
+                const Icon(
+                  Icons.error_outline,
+                  size: 40,
+                  color: AppTheme.errorColor,
+                ),
+                const SizedBox(height: AppTheme.spacingXs),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: AppTheme.spacingS),
+                  child: Text(
+                    'Error: ${studentProvider.error}',
+                    style: Theme.of(context).textTheme.bodySmall,
+                    textAlign: TextAlign.center,
                   ),
+                ),
+                const SizedBox(height: AppTheme.spacingXs),
+                CustomButton(
+                  text: 'Retry',
+                  onPressed: () => studentProvider.fetchStudents(),
+                  fullWidth: false,
+                  width: 80,
+                  height: 32,
                 ),
               ],
             ),
-            const SizedBox(height: AppTheme.spacingS),
-            Text(
-              totalStudents.toString(),
-              style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: AppTheme.primaryColor,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+          );
+        }
 
-  Widget _buildStudentsList(List<Student> allStudents) {
-    // Filter students based on search
-    final filteredStudents = _getFilteredStudents(allStudents);
+        final filteredStudents = _getFilteredStudents(studentProvider.students);
 
-    if (filteredStudents.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              _searchController.text.isEmpty ? Icons.people_outline : Icons.search_off,
-              size: 64,
-              color: AppTheme.textTertiary,
+        if (filteredStudents.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  _searchController.text.isEmpty ? Icons.people_outline : Icons.search_off,
+                  size: 40,
+                  color: AppTheme.textTertiary,
+                ),
+                const SizedBox(height: AppTheme.spacingXs),
+                Text(
+                  _searchController.text.isEmpty 
+                      ? 'No students found' 
+                      : 'No matches',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: AppTheme.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: AppTheme.spacingXs),
+                CustomButton(
+                  text: _searchController.text.isEmpty ? 'Add Student' : 'Clear',
+                  icon: _searchController.text.isEmpty ? Icons.person_add : Icons.clear,
+                  onPressed: _searchController.text.isEmpty 
+                      ? _showAddStudentDialog 
+                      : () {
+                          _searchController.clear();
+                          setState(() {});
+                        },
+                  fullWidth: false,
+                  width: 120,
+                  height: 32,
+                ),
+              ],
             ),
-            const SizedBox(height: AppTheme.spacingM),
-            Text(
-              _searchController.text.isEmpty 
-                  ? 'No students found' 
-                  : 'No students match your search',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                color: AppTheme.textSecondary,
-              ),
-            ),
-            const SizedBox(height: AppTheme.spacingS),
-            Text(
-              _searchController.text.isEmpty 
-                  ? 'Add students to get started' 
-                  : 'Try a different search term',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: AppTheme.textTertiary,
-              ),
-            ),
-            const SizedBox(height: AppTheme.spacingL),
-            CustomButton(
-              text: _searchController.text.isEmpty ? 'Add First Student' : 'Clear Search',
-              icon: _searchController.text.isEmpty ? Icons.person_add : Icons.clear,
-              onPressed: _searchController.text.isEmpty 
-                  ? _showAddStudentDialog 
-                  : () {
-                      _searchController.clear();
-                      setState(() {});
-                    },
-              fullWidth: false,
-              width: 160,
-            ),
-          ],
-        ),
-      );
-    }
+          );
+        }
 
-    return ListView.builder(
-      itemCount: filteredStudents.length,
-      itemBuilder: (context, index) {
-        final student = filteredStudents[index];
-        return _buildStudentCard(student);
+        return ListView.builder(
+          itemCount: filteredStudents.length,
+          itemBuilder: (context, index) {
+            final student = filteredStudents[index];
+            return _buildStudentCard(student);
+          },
+        );
       },
     );
   }
@@ -274,90 +237,118 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
     }).toList();
   }
 
-  // SIMPLIFIED: Removed isActive status display and toggle option
   Widget _buildStudentCard(Student student) {
     return Card(
-      margin: const EdgeInsets.only(bottom: AppTheme.spacingM),
-      child: ListTile(
-        contentPadding: const EdgeInsets.all(AppTheme.spacingM),
-        leading: CircleAvatar(
-          backgroundColor: AppTheme.primaryColor,
-          child: Text(
-            student.name.isNotEmpty ? student.name[0].toUpperCase() : 'U',
-            style: const TextStyle(
-              color: Colors.white, 
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-        title: Text(
-          student.name,
-          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        subtitle: Column(
+      margin: const EdgeInsets.only(bottom: AppTheme.spacingXs),
+      elevation: 1,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppTheme.radiusXs),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(AppTheme.spacingXs),
+        child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(height: AppTheme.spacingXs),
-            Row(
-              children: [
-                const Icon(Icons.phone, size: 16, color: AppTheme.textSecondary),
-                const SizedBox(width: AppTheme.spacingXs),
-                Text(student.whatsappNumber),
-              ],
-            ),
-            const SizedBox(height: AppTheme.spacingXs),
-            // Show student ID (WhatsApp number)
-            Row(
-              children: [
-                const Icon(Icons.badge, size: 16, color: AppTheme.textSecondary),
-                const SizedBox(width: AppTheme.spacingXs),
-                Text(
-                  'ID: ${student.id}',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppTheme.textSecondary,
-                  ),
+            CircleAvatar(
+              radius: 16,
+              backgroundColor: AppTheme.primaryColor,
+              child: Text(
+                student.name.isNotEmpty ? student.name[0].toUpperCase() : 'U',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
                 ),
-              ],
-            ),
-          ],
-        ),
-        trailing: PopupMenuButton<String>(
-          onSelected: (value) => _handleStudentAction(value, student),
-          itemBuilder: (context) => [
-            const PopupMenuItem(
-              value: 'edit',
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.edit, size: 18),
-                  SizedBox(width: AppTheme.spacingS),
-                  Text('Edit'),
-                ],
               ),
             ),
-            const PopupMenuItem(
-              value: 'assignments',
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
+            const SizedBox(width: AppTheme.spacingXs),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.assignment, size: 18),
-                  SizedBox(width: AppTheme.spacingS),
-                  Text('View Assignments'),
-                ],
-              ),
-            ),
-            const PopupMenuItem(
-              value: 'delete',
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.delete, size: 18, color: AppTheme.errorColor),
-                  SizedBox(width: AppTheme.spacingS),
-                  Text(
-                    'Delete', 
-                    style: TextStyle(color: AppTheme.errorColor),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          student.name,
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      PopupMenuButton<String>(
+                        onSelected: (value) => _handleStudentAction(value, student),
+                        iconSize: 18,
+                        padding: EdgeInsets.zero,
+                        itemBuilder: (context) => [
+                          const PopupMenuItem(
+                            value: 'edit',
+                            child: Row(
+                              children: [
+                                Icon(Icons.edit, size: 16),
+                                SizedBox(width: AppTheme.spacingXs),
+                                Text('Edit', style: TextStyle(fontSize: 12)),
+                              ],
+                            ),
+                          ),
+                          const PopupMenuItem(
+                            value: 'assignments',
+                            child: Row(
+                              children: [
+                                Icon(Icons.assignment, size: 16),
+                                SizedBox(width: AppTheme.spacingXs),
+                                Text('Assignments', style: TextStyle(fontSize: 12)),
+                              ],
+                            ),
+                          ),
+                          const PopupMenuItem(
+                            value: 'delete',
+                            child: Row(
+                              children: [
+                                Icon(Icons.delete, size: 16, color: AppTheme.errorColor),
+                                SizedBox(width: AppTheme.spacingXs),
+                                Text('Delete', style: TextStyle(fontSize: 12, color: AppTheme.errorColor)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppTheme.spacingXs),
+                  Row(
+                    children: [
+                      Icon(Icons.phone, size: 14, color: AppTheme.textSecondary),
+                      const SizedBox(width: AppTheme.spacingXs),
+                      Text(
+                        student.whatsappNumber,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppTheme.textSecondary,
+                          fontSize: 12,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppTheme.spacingXs),
+                  Row(
+                    children: [
+                      Icon(Icons.badge, size: 14, color: AppTheme.textSecondary),
+                      const SizedBox(width: AppTheme.spacingXs),
+                      Text(
+                        'ID: ${student.id}',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppTheme.textSecondary,
+                          fontSize: 12,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -385,7 +376,7 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('✅ $name added successfully!'),
+            content: Text('✅ $name added!'),
             backgroundColor: AppTheme.successColor,
           ),
         );
@@ -394,7 +385,7 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('❌ Failed to add student: $e'),
+            content: Text('❌ Failed: $e'),
             backgroundColor: AppTheme.errorColor,
           ),
         );
@@ -434,7 +425,7 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('✅ ${student.name} updated successfully!'),
+            content: Text('✅ ${student.name} updated!'),
             backgroundColor: AppTheme.successColor,
           ),
         );
@@ -443,7 +434,7 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('❌ Failed to update student: $e'),
+            content: Text('❌ Failed: $e'),
             backgroundColor: AppTheme.errorColor,
           ),
         );
@@ -451,7 +442,6 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
     }
   }
 
-  // NEW: Show student assignments with better debugging
   void _showStudentAssignments(Student student) {
     showDialog(
       context: context,
@@ -459,7 +449,7 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
         title: Text('${student.name}\'s Assignments'),
         content: SizedBox(
           width: 500,
-          height: 400,
+          height: 300,
           child: FutureBuilder<List<Map<String, dynamic>>>(
             future: Provider.of<StudentProvider>(context, listen: false)
                 .getStudentAssignments(student.id),
@@ -473,9 +463,9 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.error, size: 48, color: AppTheme.errorColor),
-                      const SizedBox(height: AppTheme.spacingM),
-                      Text('Error: ${snapshot.error}'),
+                      const Icon(Icons.error, size: 32, color: AppTheme.errorColor),
+                      const SizedBox(height: AppTheme.spacingXs),
+                      Text('Error: ${snapshot.error}', style: Theme.of(context).textTheme.bodySmall),
                     ],
                   ),
                 );
@@ -483,54 +473,14 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
               
               final assignments = snapshot.data ?? [];
               
-              // DEBUG INFO
-              print('🔍 Student ID: ${student.id}');
-              print('📋 Assignments found: ${assignments.length}');
-              for (var assignment in assignments) {
-                print('📄 Assignment: ${assignment['id']} - Active: ${assignment['isActive']}');
-              }
-              
               if (assignments.isEmpty) {
                 return Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.assignment_outlined, size: 48, color: AppTheme.textTertiary),
-                    const SizedBox(height: AppTheme.spacingM),
-                    const Text('No assignments found'),
-                    const SizedBox(height: AppTheme.spacingM),
-                    
-                    // DEBUG INFO DISPLAY
-                    Container(
-                      padding: const EdgeInsets.all(AppTheme.spacingM),
-                      decoration: BoxDecoration(
-                        color: AppTheme.warningColor.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Debug Info:',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: AppTheme.warningColor,
-                            ),
-                          ),
-                          const SizedBox(height: AppTheme.spacingS),
-                          Text('Student ID: ${student.id}'),
-                          Text('Student Name: ${student.name}'),
-                          Text('WhatsApp: ${student.whatsappNumber}'),
-                          const SizedBox(height: AppTheme.spacingS),
-                          const Text(
-                            'Check browser console for more details',
-                            style: TextStyle(
-                              fontStyle: FontStyle.italic,
-                              color: AppTheme.textSecondary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                    const Icon(Icons.assignment_outlined, size: 32, color: AppTheme.textTertiary),
+                    const SizedBox(height: AppTheme.spacingXs),
+                    const Text('No assignments'),
+                    const SizedBox(height: AppTheme.spacingXs),
                   ],
                 );
               }
@@ -558,33 +508,25 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                   final emailId = assignment['emailId'] ?? 'Unknown';
                   
                   return Card(
+                    margin: const EdgeInsets.only(bottom: AppTheme.spacingXs),
                     child: ListTile(
                       leading: Icon(
                         isActive ? Icons.check_circle : Icons.cancel,
                         color: isActive ? AppTheme.successColor : AppTheme.errorColor,
+                        size: 20,
                       ),
-                      title: Text('Email ID: $emailId'),
+                      title: Text('Email: $emailId', style: Theme.of(context).textTheme.bodySmall),
                       subtitle: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           if (dateAssigned != null)
-                            Text('Assigned: ${dateAssigned.toString().substring(0, 10)}'),
+                            Text('Assigned: ${dateAssigned.toString().substring(0, 10)}', style: Theme.of(context).textTheme.bodySmall),
                           if (expiryDate != null)
-                            Text('Expires: ${expiryDate.toString().substring(0, 10)}'),
+                            Text('Expires: ${expiryDate.toString().substring(0, 10)}', style: Theme.of(context).textTheme.bodySmall),
                           Text(
                             isActive ? 'Active' : 'Inactive',
-                            style: TextStyle(
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
                               color: isActive ? AppTheme.successColor : AppTheme.errorColor,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          // DEBUG: Show assignment ID
-                          Text(
-                            'Assignment ID: ${assignment['id']}',
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: AppTheme.textTertiary,
-                              fontFamily: 'monospace',
                             ),
                           ),
                         ],
@@ -624,7 +566,7 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('🗑️ ${student.name} deleted successfully!'),
+            content: Text('🗑️ ${student.name} deleted!'),
             backgroundColor: AppTheme.successColor,
           ),
         );
@@ -633,7 +575,7 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('❌ Failed to delete student: $e'),
+            content: Text('❌ Failed: $e'),
             backgroundColor: AppTheme.errorColor,
           ),
         );
@@ -666,13 +608,13 @@ class _DeleteStudentDialogState extends State<_DeleteStudentDialog> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Are you sure you want to delete this student?'),
-          const SizedBox(height: AppTheme.spacingM),
+          const Text('Confirm deletion?'),
+          const SizedBox(height: AppTheme.spacingXs),
           Container(
-            padding: const EdgeInsets.all(AppTheme.spacingM),
+            padding: const EdgeInsets.all(AppTheme.spacingXs),
             decoration: BoxDecoration(
               color: AppTheme.backgroundColor,
-              borderRadius: BorderRadius.circular(AppTheme.radiusM),
+              borderRadius: BorderRadius.circular(AppTheme.radiusS),
               border: Border.all(color: AppTheme.borderColor),
             ),
             child: Column(
@@ -684,33 +626,6 @@ class _DeleteStudentDialogState extends State<_DeleteStudentDialog> {
                 ),
                 Text('WhatsApp: ${widget.student.whatsappNumber}'),
                 Text('ID: ${widget.student.id}'),
-              ],
-            ),
-          ),
-          const SizedBox(height: AppTheme.spacingM),
-          Container(
-            padding: const EdgeInsets.all(AppTheme.spacingS),
-            decoration: BoxDecoration(
-              color: AppTheme.errorColor.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(AppTheme.radiusS),
-            ),
-            child: const Row(
-              children: [
-                Icon(
-                  Icons.warning,
-                  color: AppTheme.errorColor,
-                  size: 16,
-                ),
-                SizedBox(width: AppTheme.spacingS),
-                Expanded(
-                  child: Text(
-                    'This action cannot be undone!',
-                    style: TextStyle(
-                      color: AppTheme.errorColor,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
               ],
             ),
           ),
@@ -727,7 +642,8 @@ class _DeleteStudentDialogState extends State<_DeleteStudentDialog> {
           isLoading: _isDeleting,
           onPressed: _isDeleting ? null : _handleDelete,
           fullWidth: false,
-          width: 80,
+          width: 70,
+          height: 32,
         ),
       ],
     );
@@ -735,16 +651,10 @@ class _DeleteStudentDialogState extends State<_DeleteStudentDialog> {
 
   Future<void> _handleDelete() async {
     setState(() => _isDeleting = true);
-    
-    // Close dialog first
     Navigator.of(context).pop();
-    
-    // Then call the parent's delete handler
     widget.onConfirm();
   }
 }
-
-// SEPARATE DIALOG WIDGETS TO AVOID NAVIGATION CONFLICTS
 
 class _AddStudentDialog extends StatefulWidget {
   final Function(String name, String whatsappNumber) onSubmit;
@@ -764,7 +674,7 @@ class _AddStudentDialogState extends State<_AddStudentDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Add New Student'),
+      title: const Text('Add Student'),
       content: SizedBox(
         width: 400,
         child: FormBuilder(
@@ -774,21 +684,19 @@ class _AddStudentDialogState extends State<_AddStudentDialog> {
             children: [
               CustomTextField(
                 name: 'name',
-                label: 'Full Name',
-                hintText: 'Enter student\'s full name',
+                label: 'Name',
+                hintText: 'Enter name',
                 prefixIcon: Icons.person,
                 validator: FormBuilderValidators.compose([
                   FormBuilderValidators.required(),
                   FormBuilderValidators.minLength(2),
                 ]),
               ),
-              
-              const SizedBox(height: AppTheme.spacingL),
-              
+              const SizedBox(height: AppTheme.spacingS),
               CustomTextField(
                 name: 'whatsappNumber',
-                label: 'WhatsApp Number',
-                hintText: 'Enter WhatsApp number (e.g., 447123456789)',
+                label: 'WhatsApp',
+                hintText: 'e.g., 447123456789',
                 keyboardType: TextInputType.phone,
                 prefixIcon: Icons.phone,
                 validator: FormBuilderValidators.compose([
@@ -796,26 +704,20 @@ class _AddStudentDialogState extends State<_AddStudentDialog> {
                   FormBuilderValidators.minLength(10),
                 ]),
               ),
-              
-              const SizedBox(height: AppTheme.spacingM),
-              
+              const SizedBox(height: AppTheme.spacingS),
               Container(
-                padding: const EdgeInsets.all(AppTheme.spacingM),
+                padding: const EdgeInsets.all(AppTheme.spacingXs),
                 decoration: BoxDecoration(
                   color: AppTheme.primaryColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusS),
                 ),
                 child: Row(
                   children: [
-                    const Icon(
-                      Icons.info_outline,
-                      color: AppTheme.primaryColor,
-                      size: 20,
-                    ),
-                    const SizedBox(width: AppTheme.spacingS),
+                    const Icon(Icons.info_outline, color: AppTheme.primaryColor, size: 16),
+                    const SizedBox(width: AppTheme.spacingXs),
                     Expanded(
                       child: Text(
-                        'WhatsApp number will be used as the student ID',
+                        'WhatsApp is the student ID',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: AppTheme.primaryColor,
                         ),
@@ -834,11 +736,12 @@ class _AddStudentDialogState extends State<_AddStudentDialog> {
           child: const Text('Cancel'),
         ),
         CustomButton(
-          text: _isSubmitting ? 'Adding...' : 'Add Student',
+          text: _isSubmitting ? 'Adding...' : 'Add',
           isLoading: _isSubmitting,
           onPressed: _isSubmitting ? null : _handleSubmit,
           fullWidth: false,
-          width: 120,
+          width: 80,
+          height: 32,
         ),
       ],
     );
@@ -851,11 +754,7 @@ class _AddStudentDialogState extends State<_AddStudentDialog> {
       final whatsappNumber = formData['whatsappNumber'] as String;
       
       setState(() => _isSubmitting = true);
-      
-      // Close dialog first
       Navigator.of(context).pop();
-      
-      // Then call the parent's submit handler
       await widget.onSubmit(name, whatsappNumber);
     }
   }
@@ -891,7 +790,7 @@ class _EditStudentDialogState extends State<_EditStudentDialog> {
             children: [
               CustomTextField(
                 name: 'name',
-                label: 'Full Name',
+                label: 'Name',
                 initialValue: widget.student.name,
                 prefixIcon: Icons.person,
                 validator: FormBuilderValidators.compose([
@@ -899,12 +798,10 @@ class _EditStudentDialogState extends State<_EditStudentDialog> {
                   FormBuilderValidators.minLength(2),
                 ]),
               ),
-              
-              const SizedBox(height: AppTheme.spacingL),
-              
+              const SizedBox(height: AppTheme.spacingS),
               CustomTextField(
                 name: 'whatsappNumber',
-                label: 'WhatsApp Number',
+                label: 'WhatsApp',
                 initialValue: widget.student.whatsappNumber,
                 keyboardType: TextInputType.phone,
                 prefixIcon: Icons.phone,
@@ -913,26 +810,20 @@ class _EditStudentDialogState extends State<_EditStudentDialog> {
                   FormBuilderValidators.minLength(10),
                 ]),
               ),
-              
-              const SizedBox(height: AppTheme.spacingM),
-              
+              const SizedBox(height: AppTheme.spacingS),
               Container(
-                padding: const EdgeInsets.all(AppTheme.spacingM),
+                padding: const EdgeInsets.all(AppTheme.spacingXs),
                 decoration: BoxDecoration(
                   color: AppTheme.warningColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusS),
                 ),
                 child: Row(
                   children: [
-                    const Icon(
-                      Icons.warning_amber,
-                      color: AppTheme.warningColor,
-                      size: 20,
-                    ),
-                    const SizedBox(width: AppTheme.spacingS),
+                    const Icon(Icons.warning_amber, color: AppTheme.warningColor, size: 16),
+                    const SizedBox(width: AppTheme.spacingXs),
                     Expanded(
                       child: Text(
-                        'Changing WhatsApp number will update the student ID and all related assignments',
+                        'Changing WhatsApp updates ID and assignments',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: AppTheme.warningColor,
                         ),
@@ -955,7 +846,8 @@ class _EditStudentDialogState extends State<_EditStudentDialog> {
           isLoading: _isSubmitting,
           onPressed: _isSubmitting ? null : _handleSubmit,
           fullWidth: false,
-          width: 100,
+          width: 80,
+          height: 32,
         ),
       ],
     );
@@ -968,11 +860,7 @@ class _EditStudentDialogState extends State<_EditStudentDialog> {
       final whatsappNumber = formData['whatsappNumber'] as String;
       
       setState(() => _isSubmitting = true);
-      
-      // Close dialog first
       Navigator.of(context).pop();
-      
-      // Then call the parent's submit handler
       await widget.onSubmit(name, whatsappNumber);
     }
   }
