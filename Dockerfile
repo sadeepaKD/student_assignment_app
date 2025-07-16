@@ -1,15 +1,28 @@
-# Use a more recent Flutter image with Dart 3.x
-FROM cirrusci/flutter:3.16.0 as builder
+# Use Ubuntu base image and install Flutter manually
+FROM ubuntu:22.04 as builder
+
+# Install dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    git \
+    unzip \
+    xz-utils \
+    zip \
+    libglu1-mesa \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Flutter
+RUN git clone https://github.com/flutter/flutter.git -b stable /flutter
+ENV PATH="/flutter/bin:/flutter/bin/cache/dart-sdk/bin:${PATH}"
+
+# Enable web support
+RUN flutter config --enable-web
+RUN flutter doctor
 
 WORKDIR /app
 
 # Copy pubspec files
 COPY pubspec.yaml pubspec.lock ./
-
-# Enable flutter web and upgrade Flutter
-RUN flutter config --enable-web
-RUN flutter upgrade
-RUN flutter --version
 
 # Get dependencies
 RUN flutter pub get
@@ -17,7 +30,7 @@ RUN flutter pub get
 # Copy source code
 COPY . .
 
-# Build Flutter web app for production
+# Build Flutter web app
 RUN flutter build web --release --web-renderer html
 
 # Production stage with nginx
