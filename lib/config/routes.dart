@@ -8,7 +8,7 @@ import '../screens/dashboard/dashboard_screen.dart';
 import '../screens/dashboard/email_pool_screen.dart';
 import '../screens/dashboard/student_management_screen.dart';
 import '../screens/dashboard/assignment_management_screen.dart';
-import '../screens/telegram_bot_screen.dart'; // New import
+import '../screens/telegram/telegram_dashboard.dart'; // Updated import
 
 class AppRouter {
   static GoRouter get router => GoRouter(
@@ -60,7 +60,7 @@ class AppRouter {
           GoRoute(
             path: '/dashboard/telegram-bot',
             name: 'telegram-bot',
-            builder: (context, state) => const TelegramBotScreen(), // New route
+            builder: (context, state) => const TelegramDashboard(), // Updated to use new dashboard
           ),
         ],
       ),
@@ -193,7 +193,7 @@ class DashboardLayout extends StatelessWidget {
                 _buildDrawerItem(
                   context: context,
                   icon: Icons.telegram,
-                  title: 'Telegram Bot', // New item
+                  title: 'Telegram Bot',
                   route: '/dashboard/telegram-bot',
                   isSelected: currentRoute == '/dashboard/telegram-bot',
                 ),
@@ -279,7 +279,7 @@ class DashboardLayout extends StatelessWidget {
         return 'Email Pool';
       case '/dashboard/assignments':
         return 'Assignments';
-      case '/dashboard/telegram-bot': // New case
+      case '/dashboard/telegram-bot':
         return 'Telegram Bot';
       default:
         return 'Student Admin';

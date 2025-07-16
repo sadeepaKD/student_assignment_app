@@ -9,7 +9,7 @@ import 'providers/auth_provider.dart';
 import 'providers/student_provider.dart';
 import 'providers/email_pool_provider.dart';
 import 'providers/assignment_provider.dart';
-import 'providers/telegram_bot_provider.dart'; // New import
+import 'providers/telegram_provider.dart'; // Updated import
 import 'firebase_options.dart';
 
 void main() async {
@@ -31,7 +31,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => StudentProvider()),
         ChangeNotifierProvider(create: (_) => EmailPoolProvider()),
         ChangeNotifierProvider(create: (_) => AssignmentProvider()),
-        ChangeNotifierProvider(create: (_) => TelegramBotProvider()), // New provider
+        ChangeNotifierProvider(create: (_) => TelegramProvider()), // Updated provider
       ],
       child: MaterialApp.router(
         title: 'Student Admin Dashboard',

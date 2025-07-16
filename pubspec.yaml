@@ -34,6 +34,9 @@ dependencies:
   
   # Responsive Design
   responsive_framework: ^1.1.1
+  
+  # Add these new ones for Telegram integration:
+  stream_transform: ^2.1.0
 
 dev_dependencies:
   flutter_test:
@@ -42,5 +45,3 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-  
-  
