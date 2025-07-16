@@ -1,19 +1,20 @@
-# Multi-stage build for Flutter web app
-FROM cirrusci/flutter:stable as builder
+# Use a more recent Flutter image with Dart 3.x
+FROM cirrusci/flutter:3.16.0 as builder
 
-# Set working directory
 WORKDIR /app
 
 # Copy pubspec files
 COPY pubspec.yaml pubspec.lock ./
 
-# Enable flutter web
+# Enable flutter web and upgrade Flutter
 RUN flutter config --enable-web
+RUN flutter upgrade
+RUN flutter --version
 
 # Get dependencies
 RUN flutter pub get
 
-# Copy source code (excluding bot files)
+# Copy source code
 COPY . .
 
 # Build Flutter web app for production
