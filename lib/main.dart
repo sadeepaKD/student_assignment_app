@@ -9,8 +9,8 @@ import 'providers/auth_provider.dart';
 import 'providers/student_provider.dart';
 import 'providers/email_pool_provider.dart';
 import 'providers/assignment_provider.dart';
+import 'providers/telegram_bot_provider.dart'; // New import
 import 'firebase_options.dart';
-import 'package:student_admin_app/providers/auth_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -31,6 +31,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => StudentProvider()),
         ChangeNotifierProvider(create: (_) => EmailPoolProvider()),
         ChangeNotifierProvider(create: (_) => AssignmentProvider()),
+        ChangeNotifierProvider(create: (_) => TelegramBotProvider()), // New provider
       ],
       child: MaterialApp.router(
         title: 'Student Admin Dashboard',
