@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  # Flutter Admin Web App ONLY
+  student-admin-web:
+    build: .
+    container_name: student-admin-web
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    networks:
+      - web-network
+
+networks:
+  web-network:
+    driver: bridge

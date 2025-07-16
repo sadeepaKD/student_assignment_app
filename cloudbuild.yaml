@@ -1,0 +1,56 @@
+steps:
+# Build Telegram Bot (existing)
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['build', '-t', 'us-central1-docker.pkg.dev/telegram-otp-bot-bjn/otp-bot-repo/otp-bot:$SHORT_SHA', '.']
+
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['push', 'us-central1-docker.pkg.dev/telegram-otp-bot-bjn/otp-bot-repo/otp-bot:$SHORT_SHA']
+
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['tag',
+         'us-central1-docker.pkg.dev/telegram-otp-bot-bjn/otp-bot-repo/otp-bot:$SHORT_SHA',
+         'us-central1-docker.pkg.dev/telegram-otp-bot-bjn/otp-bot-repo/otp-bot:latest']
+
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['push', 'us-central1-docker.pkg.dev/telegram-otp-bot-bjn/otp-bot-repo/otp-bot:latest']
+
+# Build Flutter Admin Web App (new addition)
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['build', '-t', 'us-central1-docker.pkg.dev/telegram-otp-bot-bjn/otp-bot-repo/student-admin-web:$SHORT_SHA', '-f', 'Dockerfile.flutter', '.']
+
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['push', 'us-central1-docker.pkg.dev/telegram-otp-bot-bjn/otp-bot-repo/student-admin-web:$SHORT_SHA']
+
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['tag',
+         'us-central1-docker.pkg.dev/telegram-otp-bot-bjn/otp-bot-repo/student-admin-web:$SHORT_SHA',
+         'us-central1-docker.pkg.dev/telegram-otp-bot-bjn/otp-bot-repo/student-admin-web:latest']
+
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['push', 'us-central1-docker.pkg.dev/telegram-otp-bot-bjn/otp-bot-repo/student-admin-web:latest']
+
+# Deploy to VPS (existing)
+- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  entrypoint: 'bash'
+  args:
+    - '-c'
+    - |
+      echo "🔐 Fetching SSH key from Secret Manager..."
+      gcloud secrets versions access latest --secret=ec2-ssh-key > /root/.ssh/id_rsa
+      chmod 600 /root/.ssh/id_rsa
+      ssh-keyscan -H 147.182.197.11 >> /root/.ssh/known_hosts
+      echo "🚀 Deploying both bot and admin web app to VPS..."
+      ssh -i /root/.ssh/id_rsa -o StrictHostKeyChecking=no root@147.182.197.11 "
+        cd /root/telegram-otp-bot &&
+        docker-compose pull &&
+        docker-compose up -d
+      "
+
+images:
+- 'us-central1-docker.pkg.dev/telegram-otp-bot-bjn/otp-bot-repo/otp-bot:$SHORT_SHA'
+- 'us-central1-docker.pkg.dev/telegram-otp-bot-bjn/otp-bot-repo/otp-bot:latest'
+- 'us-central1-docker.pkg.dev/telegram-otp-bot-bjn/otp-bot-repo/student-admin-web:$SHORT_SHA'
+- 'us-central1-docker.pkg.dev/telegram-otp-bot-bjn/otp-bot-repo/student-admin-web:latest'
+
+options:
+  logging: CLOUD_LOGGING_ONLY

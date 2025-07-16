@@ -1,0 +1,43 @@
+# Flutter
+build/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+README.md
+docs/
+
+# Environment
+.env
+.env.local
+
+# EXCLUDE all bot-related files (keep separate)
+bot.py
+requirements.txt
+Dockerfile.bot
+__pycache__/
+*.pyc
+
+# EXCLUDE any bot directories
+bot/
+python/
+telegram/
